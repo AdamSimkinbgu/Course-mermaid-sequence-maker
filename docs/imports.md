@@ -3,6 +3,11 @@ Imports
 Excel/CSV (Deterministic)
 - Input: single sheet with columns `course_id, course_name, credits, department, level, term, prereq_expression`.
 - Grammar: COURSE_ID tokens, AND, OR, parentheses; NONE for no prereqs.
+- EBNF (initial):
+  - Expression := Term { OR Term }
+  - Term       := Factor { AND Factor }
+  - Factor     := COURSE_ID | NONE | '(' Expression ')'
+  - Operators are case-insensitive; AND precedence > OR.
 - Algorithm:
   1. Parse rows, trim/normalize IDs; validate credits ≥ 0.
   2. Validate uniqueness of course_id.
