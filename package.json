@@ -1,0 +1,23 @@
+{
+  "name": "course-dag-builder",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Web app + API to import, edit, and visualize course prerequisite DAGs.",
+  "engines": {
+    "node": ">=18"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "echo \"Define per-package build scripts\"",
+    "dev": "echo \"Run apps/web and apps/api dev servers from their packages\"",
+    "typecheck": "tsc -p tsconfig.base.json --noEmit",
+    "lint": "echo \"Add eslint later\"",
+    "format": "echo \"Add prettier later\""
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
