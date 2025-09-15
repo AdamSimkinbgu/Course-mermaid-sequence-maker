@@ -1,0 +1,52 @@
+Architecture
+
+Overview
+- Web Client (`apps/web`): React + TypeScript editor that renders and edits a prerequisite DAG. Renders with React Flow + ELK/Dagre. Parses/validates prerequisite expressions locally. Handles Excel import locally; PDF parsing flow is user‑initiated and opt‑in.
+- API (`apps/api`): Vercel Serverless Functions. Provides CRUD for projects, graphs, roles, share links, and export endpoints. Validates requests, enforces RBAC, and persists to Postgres.
+- Database: Postgres for users, projects, memberships, graphs, nodes, edges, expressions, and share links. Migrations in `db/migrations`.
+- Storage: All graph content stored in Postgres. Local export/import in the client as JSON; no binary blob storage required for MVP.
+
+Key Flows
+- Excel Import (MVP):
+  1. User selects Excel/CSV.
+  2. Client parses deterministically, validates schema, builds AST for `prereq_expression`.
+  3. Client displays preview and validation errors; user fixes locally.
+  4. On save, payload (nodes, edges, expressions) posted to API to persist.
+
+- Graph Editing:
+  1. Client loads graph JSON from API.
+  2. User edits nodes/edges/groups; undo/redo and autosave persist diffs.
+  3. Layout engine computes positions; UI reflects eligibility (AND/OR satisfaction, graying downstream paths).
+
+- PDF Ingestion (Phase 2):
+  1. User uploads PDF; default on-device OCR (Tesseract.js). Optionally opt-in to cloud OCR.
+  2. Heuristics + NER extract course blocks and prerequisite text.
+  3. AI-assisted transform to the expression grammar; ambiguous cases highlighted.
+  4. User reviews and confirms before persisting to the same graph model.
+
+Component Responsibilities
+- Client
+  - DAG rendering and editing (React Flow, ELK/Dagre)
+  - Expression grammar parsing/evaluation
+  - Excel/CSV parsing and validation
+  - i18n (EN/HE) with RTL support
+  - Accessibility (WCAG 2.2 AA)
+  - Auth flows (OAuth + email/password)
+
+- API
+  - AuthN/AuthZ, sessions (httpOnly cookies), CSRF
+  - RBAC enforcement on all endpoints
+  - CRUD for projects/graphs/memberships/share links
+  - Export services: Mermaid, JSON, SVG/PNG, Excel
+  - Validation and normalization of requests
+
+Non-Functional
+- Performance: Smooth for ~200 nodes; layout < 1s typical; caching where applicable.
+- Privacy: On-device processing by default; explicit opt‑in to cloud services.
+- Reliability: Strong validation and deterministic Excel path before tackling PDFs.
+
+Deployment
+- Vercel project(s):
+  - `apps/web`: Static site with client build.
+  - `apps/api`: Serverless functions under `api/` directory of that project.
+- Postgres: Serverless-friendly provider (e.g., Neon/Supabase). Connection pooling via serverless driver.
