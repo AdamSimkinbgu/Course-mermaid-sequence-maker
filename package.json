@@ -14,6 +14,7 @@
     "build": "npm run -ws build",
     "dev": "npm run -ws dev",
     "typecheck": "npm run -ws typecheck",
+    "test:smoke": "npm run build && node scripts/smoke.mjs",
     "lint": "echo \"Add eslint later\"",
     "format": "echo \"Add prettier later\""
   },

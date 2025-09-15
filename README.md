@@ -25,3 +25,5 @@ Repo layout
 
 Getting started
 - See `docs/dev-setup.md` for local development workflow and environment variables.
+- Build packages and run smoke test:
+- `npm run test:smoke` (builds workspace packages, then parses the CSV template and prints a summary)
