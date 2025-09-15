@@ -6,7 +6,13 @@
     "lib": ["ES2020", "DOM"],
     "moduleResolution": "Node",
     "baseUrl": ".",
-    "paths": {},
+    "paths": {
+      "@course-dag/core": ["packages/core/src"],
+      "@course-dag/expression": ["packages/expression/src"],
+      "@course-dag/parser-excel": ["packages/parser-excel/src"],
+      "@course-dag/parser-pdf": ["packages/parser-pdf/src"],
+      "@course-dag/*": ["packages/*/src"]
+    },
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
