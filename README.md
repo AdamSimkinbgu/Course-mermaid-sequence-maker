@@ -12,6 +12,7 @@ Quick links
 - i18n & Accessibility: `docs/i18n-accessibility.md`
 - Security: `docs/security.md`
 - Roadmap: `docs/roadmap.md`
+- Requirements: `requirements.md`
 - Templates: `resources/templates/README.md`
 
 Repo layout
