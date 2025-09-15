@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/expression" },
+    { "path": "packages/parser-excel" },
+    { "path": "packages/parser-pdf" },
+    { "path": "apps/web" },
+    { "path": "apps/api" }
+  ]
+}

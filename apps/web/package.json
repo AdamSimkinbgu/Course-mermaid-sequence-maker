@@ -1,0 +1,16 @@
+{
+  "name": "@course-dag/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'TODO: scaffold web app dev server'",
+    "build": "echo 'No build yet (web app scaffold pending)'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@course-dag/core": "*",
+    "@course-dag/expression": "*",
+    "@course-dag/parser-excel": "*"
+  }
+}

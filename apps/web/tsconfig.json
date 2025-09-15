@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "references": [
+    { "path": "../../packages/core" },
+    { "path": "../../packages/expression" },
+    { "path": "../../packages/parser-excel" }
+  ],
+  "include": ["src"]
+}

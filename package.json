@@ -11,9 +11,9 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "echo \"Define per-package build scripts\"",
-    "dev": "echo \"Run apps/web and apps/api dev servers from their packages\"",
-    "typecheck": "tsc -p tsconfig.base.json --noEmit",
+    "build": "npm run -ws build",
+    "dev": "npm run -ws dev",
+    "typecheck": "npm run -ws typecheck",
     "lint": "echo \"Add eslint later\"",
     "format": "echo \"Add prettier later\""
   },
