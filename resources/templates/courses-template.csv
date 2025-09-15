@@ -1,0 +1,7 @@
+course_id,course_name,credits,department,level,term,prereq_expression
+CS101,Introduction to Computer Science,3.0,CS,100,Y1-S1,NONE
+MATH101,Calculus I,4.0,MATH,100,Y1-S1,NONE
+CS102,Data Structures,4.5,CS,200,Y1-S2,"CS101 AND MATH101"
+CS201,Algorithms,4.0,CS,200,Y2-S1,CS102
+PHYS100,Physics I,3.0,PHYS,100,Summer,NONE
+CS202,Parallel Programming,3.0,CS,300,Y2-S2,"(CS102 AND MATH101) OR PHYS100"

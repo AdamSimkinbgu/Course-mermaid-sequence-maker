@@ -1,0 +1,94 @@
+<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+  <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+    <Author>Course DAG Template</Author>
+    <LastAuthor>Course DAG Template</LastAuthor>
+    <Created>2025-01-01T00:00:00Z</Created>
+    <Company>Open Source</Company>
+    <Version>16.00</Version>
+  </DocumentProperties>
+  <ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">
+    <WindowHeight>8130</WindowHeight>
+    <WindowWidth>15195</WindowWidth>
+    <WindowTopX>120</WindowTopX>
+    <WindowTopY>45</WindowTopY>
+    <ProtectStructure>False</ProtectStructure>
+    <ProtectWindows>False</ProtectWindows>
+  </ExcelWorkbook>
+  <Worksheet ss:Name="Courses">
+    <Table>
+      <Row>
+        <Cell><Data ss:Type="String">course_id</Data></Cell>
+        <Cell><Data ss:Type="String">course_name</Data></Cell>
+        <Cell><Data ss:Type="String">credits</Data></Cell>
+        <Cell><Data ss:Type="String">department</Data></Cell>
+        <Cell><Data ss:Type="String">level</Data></Cell>
+        <Cell><Data ss:Type="String">term</Data></Cell>
+        <Cell><Data ss:Type="String">prereq_expression</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">CS101</Data></Cell>
+        <Cell><Data ss:Type="String">Introduction to Computer Science</Data></Cell>
+        <Cell><Data ss:Type="Number">3</Data></Cell>
+        <Cell><Data ss:Type="String">CS</Data></Cell>
+        <Cell><Data ss:Type="String">100</Data></Cell>
+        <Cell><Data ss:Type="String">Y1-S1</Data></Cell>
+        <Cell><Data ss:Type="String">NONE</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">MATH101</Data></Cell>
+        <Cell><Data ss:Type="String">Calculus I</Data></Cell>
+        <Cell><Data ss:Type="Number">4</Data></Cell>
+        <Cell><Data ss:Type="String">MATH</Data></Cell>
+        <Cell><Data ss:Type="String">100</Data></Cell>
+        <Cell><Data ss:Type="String">Y1-S1</Data></Cell>
+        <Cell><Data ss:Type="String">NONE</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">CS102</Data></Cell>
+        <Cell><Data ss:Type="String">Data Structures</Data></Cell>
+        <Cell><Data ss:Type="Number">4.5</Data></Cell>
+        <Cell><Data ss:Type="String">CS</Data></Cell>
+        <Cell><Data ss:Type="String">200</Data></Cell>
+        <Cell><Data ss:Type="String">Y1-S2</Data></Cell>
+        <Cell><Data ss:Type="String">CS101 AND MATH101</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">CS201</Data></Cell>
+        <Cell><Data ss:Type="String">Algorithms</Data></Cell>
+        <Cell><Data ss:Type="Number">4</Data></Cell>
+        <Cell><Data ss:Type="String">CS</Data></Cell>
+        <Cell><Data ss:Type="String">200</Data></Cell>
+        <Cell><Data ss:Type="String">Y2-S1</Data></Cell>
+        <Cell><Data ss:Type="String">CS102</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">PHYS100</Data></Cell>
+        <Cell><Data ss:Type="String">Physics I</Data></Cell>
+        <Cell><Data ss:Type="Number">3</Data></Cell>
+        <Cell><Data ss:Type="String">PHYS</Data></Cell>
+        <Cell><Data ss:Type="String">100</Data></Cell>
+        <Cell><Data ss:Type="String">Summer</Data></Cell>
+        <Cell><Data ss:Type="String">NONE</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">CS202</Data></Cell>
+        <Cell><Data ss:Type="String">Parallel Programming</Data></Cell>
+        <Cell><Data ss:Type="Number">3</Data></Cell>
+        <Cell><Data ss:Type="String">CS</Data></Cell>
+        <Cell><Data ss:Type="String">300</Data></Cell>
+        <Cell><Data ss:Type="String">Y2-S2</Data></Cell>
+        <Cell><Data ss:Type="String">(CS102 AND MATH101) OR PHYS100</Data></Cell>
+      </Row>
+    </Table>
+    <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+      <ProtectObjects>False</ProtectObjects>
+      <ProtectScenarios>False</ProtectScenarios>
+    </WorksheetOptions>
+  </Worksheet>
+</Workbook>

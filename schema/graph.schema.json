@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schema/graph.schema.json",
+  "title": "Course Prerequisite Graph",
+  "type": "object",
+  "required": ["id", "nodes", "edges"],
+  "properties": {
+    "id": { "type": "string" },
+    "projectId": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1 },
+    "layoutPrefs": {
+      "type": "object",
+      "properties": {
+        "direction": { "type": "string", "enum": ["LR", "TD"] },
+        "engine": { "type": "string", "enum": ["ELK", "Dagre"] }
+      },
+      "additionalProperties": true
+    },
+    "theme": { "type": "object" },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "prereqExpressions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/prereqExpression" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "nodeType", "title"],
+      "properties": {
+        "id": { "type": "string" },
+        "nodeType": { "type": "string", "enum": ["course", "group", "note"] },
+        "title": { "type": "string" },
+        "credits": { "type": "number", "minimum": 0 },
+        "department": { "type": "string" },
+        "level": { "type": ["string", "integer"] },
+        "term": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["completed", "in_progress", "planned", "failed", "unknown"],
+          "default": "planned"
+        },
+        "badges": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "notes": { "type": "string" },
+        "groupId": { "type": "string" },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "source", "target"],
+      "properties": {
+        "id": { "type": "string" },
+        "source": { "type": "string" },
+        "target": { "type": "string" },
+        "label": { "type": "string" },
+        "notes": { "type": "string" },
+        "groupingId": { "type": "string" },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "prereqExpression": {
+      "type": "object",
+      "required": ["courseId", "expression"],
+      "properties": {
+        "courseId": { "type": "string" },
+        "expression": { "type": "string" },
+        "normalizedAst": { "type": "object" },
+        "validationState": { "type": "string", "enum": ["valid", "invalid", "ambiguous"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
