@@ -42,13 +42,18 @@ MVP (Excel-first)
     - Template: resources/templates/courses-template.csv:1
 
 - Editor (React Flow + ELK/Dagre)
-  - [ ] Web app scaffold (Vite/Next)
-    - apps/web/README.md:1
-  - [ ] Node/edge create, edit, delete
+  - [x] Web app scaffold (Vite)
+    - apps/web/vite.config.ts:1
+    - apps/web/src/main.tsx:1
+  - [x] Node/edge create, edit, delete
+    - apps/web/src/state/GraphContext.tsx:1
+    - apps/web/src/components/Sidebar.tsx:1
   - [ ] Notes on nodes/edges
   - [ ] Undo/redo and autosave
   - [ ] Group containers with collapse/expand
-  - [ ] Layout toolbar (LR/TD, ELK/Dagre)
+  - [x] Layout toolbar (LR/TD, ELK/Dagre)
+    - apps/web/src/components/Toolbar.tsx:1
+    - apps/web/src/utils/layout.ts:1
   - [ ] Status marking and eligibility highlighting
   - [ ] Theming and node badges
   - [ ] Mermaid code panel (editable, bidirectional)

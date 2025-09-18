@@ -1,0 +1,48 @@
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.app-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  min-height: 0;
+}
+
+.graph-canvas {
+  background: #ffffff;
+}
+
+.graph-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+
+.graph-panel strong {
+  font-size: 0.9rem;
+}
+
+.graph-panel span {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+@media (max-width: 960px) {
+  .app-main {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+}
