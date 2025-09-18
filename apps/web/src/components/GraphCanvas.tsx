@@ -23,28 +23,33 @@ export function GraphCanvas(): JSX.Element {
     onNodesDelete,
     onEdgesDelete,
     selectNode,
+    selectEdge,
   } = useGraph();
 
   const handleSelectionChange = useCallback(
     (selection: OnSelectionChangeParams) => {
       const firstNode = selection.nodes?.[0];
+      const firstEdge = selection.edges?.[0];
       selectNode(firstNode ? firstNode.id : null);
+      selectEdge(firstEdge ? firstEdge.id : null);
     },
-    [selectNode],
+    [selectNode, selectEdge],
   );
 
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       selectNode(node.id);
+      selectEdge(null);
     },
-    [selectNode],
+    [selectNode, selectEdge],
   );
 
   const handleEdgeClick = useCallback(
     (_: React.MouseEvent, edge: Edge) => {
       selectNode(null);
+      selectEdge(edge.id);
     },
-    [selectNode],
+    [selectNode, selectEdge],
   );
 
   return (

@@ -12,6 +12,8 @@ interface SidebarFormState {
   term: string;
   status: CourseStatus;
   disabled: boolean;
+  grade: string;
+  notes: string;
 }
 
 const STATUS_OPTIONS: CourseStatus[] = [
@@ -30,21 +32,31 @@ const EMPTY_FORM: SidebarFormState = {
   term: '',
   status: 'planned',
   disabled: false,
+  grade: '',
+  notes: '',
 };
 
 export function Sidebar(): JSX.Element {
   const {
+    edges,
     nodes,
     selectedNodeId,
+    selectedEdgeId,
     updateNode,
     deleteNode,
     addNode,
+    updateEdgeNote,
     applyLayout,
   } = useGraph();
 
   const selectedNode = useMemo(() => nodes.find((node) => node.id === selectedNodeId), [
     nodes,
     selectedNodeId,
+  ]);
+
+  const selectedEdge = useMemo(() => edges.find((edge) => edge.id === selectedEdgeId), [
+    edges,
+    selectedEdgeId,
   ]);
 
   const [form, setForm] = useState<SidebarFormState>(EMPTY_FORM);
@@ -62,11 +74,16 @@ export function Sidebar(): JSX.Element {
       term: selectedNode.data.term ?? '',
       status: selectedNode.data.status,
       disabled: selectedNode.data.disabled,
+      grade: selectedNode.data.grade ?? '',
+      notes: selectedNode.data.notes ?? '',
     });
   }, [selectedNode]);
 
-  const handleChange = <K extends keyof SidebarFormState>(field: K, transform?: (value: string) => SidebarFormState[K]) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = <K extends keyof SidebarFormState>(
+    field: K,
+    transform?: (value: string) => SidebarFormState[K],
+  ) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       const value = event.target.value;
       const nextValue = transform ? transform(value) : (value as SidebarFormState[K]);
       setForm((current) => ({ ...current, [field]: nextValue }));
@@ -75,6 +92,10 @@ export function Sidebar(): JSX.Element {
           updateNode(selectedNode.id, { credits: Number(nextValue) });
         } else if (field === 'status') {
           updateNode(selectedNode.id, { status: nextValue as CourseStatus });
+        } else if (field === 'grade') {
+          updateNode(selectedNode.id, { grade: nextValue as string });
+        } else if (field === 'notes') {
+          updateNode(selectedNode.id, { notes: nextValue as string });
         } else {
           updateNode(selectedNode.id, { [field]: nextValue });
         }
@@ -165,6 +186,16 @@ export function Sidebar(): JSX.Element {
             </div>
           </div>
           <div className="sidebar__field">
+            <label htmlFor="course-grade">Grade</label>
+            <input
+              id="course-grade"
+              value={form.grade}
+              onChange={handleChange('grade', (value) => value.toUpperCase() as SidebarFormState['grade'])}
+              placeholder="e.g. 92 or A-"
+            />
+            <p className="sidebar__hint">Grades update the course status automatically.</p>
+          </div>
+          <div className="sidebar__field">
             <label htmlFor="course-department">Department</label>
             <input
               id="course-department"
@@ -208,7 +239,19 @@ export function Sidebar(): JSX.Element {
               prerequisites.
             </p>
           </div>
+          <div className="sidebar__field">
+            <label htmlFor="course-notes">Notes</label>
+            <textarea
+              id="course-notes"
+              rows={4}
+              value={form.notes}
+              onChange={handleChange('notes')}
+              placeholder="Add notes or reminders for this course"
+            />
+          </div>
         </form>
+      ) : selectedEdge ? (
+        <EdgeInspector edgeId={selectedEdge.id} note={String(selectedEdge.data?.note ?? '')} onChange={updateEdgeNote} />
       ) : (
         <div className="sidebar__empty">
           <h2>Select a course</h2>
@@ -224,5 +267,33 @@ export function Sidebar(): JSX.Element {
         </div>
       )}
     </aside>
+  );
+}
+
+interface EdgeInspectorProps {
+  edgeId: string;
+  note: string;
+  onChange: (id: string, note: string) => void;
+}
+
+function EdgeInspector({ edgeId, note, onChange }: EdgeInspectorProps): JSX.Element {
+  return (
+    <form className="sidebar__form" onSubmit={(event) => event.preventDefault()}>
+      <h2 className="sidebar__heading">Edge notes</h2>
+      <div className="sidebar__field">
+        <label htmlFor="edge-id">Edge ID</label>
+        <input id="edge-id" value={edgeId} disabled />
+      </div>
+      <div className="sidebar__field">
+        <label htmlFor="edge-note">Notes</label>
+        <textarea
+          id="edge-note"
+          rows={4}
+          value={note}
+          onChange={(event) => onChange(edgeId, event.target.value)}
+          placeholder="Describe the prerequisite relationship"
+        />
+      </div>
+    </form>
   );
 }

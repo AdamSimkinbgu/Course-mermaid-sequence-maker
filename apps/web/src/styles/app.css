@@ -69,6 +69,7 @@
   color: #475569;
 }
 
+.react-flow__node.course-node.course-node--failed,
 .react-flow__node.course-node.course-node--disabled {
   background: #fee2e2;
   border-color: #ef4444;

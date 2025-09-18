@@ -45,6 +45,8 @@ export interface CourseNodeData {
   term?: string;
   status: CourseStatus;
   disabled: boolean;
+  grade?: string;
+  notes?: string;
 }
 
 export interface LayoutSettings {
@@ -56,6 +58,7 @@ interface GraphContextValue {
   nodes: Node<CourseNodeData>[];
   edges: Edge[];
   selectedNodeId: string | null;
+  selectedEdgeId: string | null;
   layout: LayoutSettings;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -63,9 +66,11 @@ interface GraphContextValue {
   onNodesDelete: (nodes: Node[]) => void;
   onEdgesDelete: (edges: Edge[]) => void;
   selectNode: (id: string | null) => void;
+  selectEdge: (id: string | null) => void;
   updateNode: (id: string, updates: Partial<CourseNodeData>) => void;
   addNode: (node?: Partial<CourseNodeData>) => string;
   deleteNode: (id: string) => void;
+  updateEdgeNote: (id: string, note: string) => void;
   applyLayout: (overrides?: Partial<LayoutSettings>) => void;
 }
 
@@ -91,13 +96,14 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
   );
   const [edges, setEdges] = useState<Edge[]>(() => initialEdges(sampleGraph));
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
   const nodeVisualSignature = useMemo(
     () =>
       nodes
         .map(
           (node) =>
-            `${node.id}:${node.data.status}:${node.data.disabled}:${node.data.title}:${node.data.credits}`,
+            `${node.id}:${node.data.status}:${node.data.disabled}:${node.data.title}:${node.data.credits}:${node.data.grade ?? ''}:${node.data.notes ?? ''}`,
         )
         .join('|'),
     [nodes],
@@ -203,16 +209,41 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
 
   const selectNode = useCallback((id: string | null) => {
     setSelectedNodeId(id);
+    if (id !== null) {
+      setSelectedEdgeId(null);
+    }
   }, []);
 
   const updateNode = useCallback((id: string, updates: Partial<CourseNodeData>) => {
     setNodes((current) =>
       current.map((node) => {
         if (node.id !== id) return node;
+        const normalized = normalizeNodeUpdates(updates);
         const merged: CourseNodeData = {
           ...node.data,
-          ...normalizeNodeUpdates(updates),
+          ...normalized,
         };
+
+        if (normalized.grade !== undefined) {
+          const gradeStatus = deriveStatusFromGrade(merged.grade);
+          if (gradeStatus) {
+            merged.status = gradeStatus;
+          } else if (!merged.disabled && merged.status === 'failed') {
+            merged.status = 'planned';
+          }
+        }
+
+        if (normalized.disabled !== undefined) {
+          if (merged.disabled) {
+            merged.status = 'failed';
+          } else if (merged.grade) {
+            const gradeStatus = deriveStatusFromGrade(merged.grade);
+            if (gradeStatus) {
+              merged.status = gradeStatus;
+            }
+          }
+        }
+
         merged.label = formatLabel(merged.courseId, merged.title);
         return { ...node, data: merged };
       }),
@@ -233,6 +264,8 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         term: node?.term,
         status: node?.status ?? 'planned',
         disabled: node?.disabled ?? false,
+        grade: node?.grade,
+        notes: node?.notes ?? '',
       };
       baseData.label = formatLabel(baseData.courseId, baseData.title);
       const newNode: Node<CourseNodeData> = {
@@ -265,6 +298,23 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
     },
     [nodes, onNodesDelete],
   );
+
+  const updateEdgeNote = useCallback((id: string, note: string) => {
+    setEdges((current) =>
+      current.map((edge) =>
+        edge.id === id
+          ? {
+              ...edge,
+              data: {
+                ...edge.data,
+                note,
+              },
+              label: note ? note : edge.label,
+            }
+          : edge,
+      ),
+    );
+  }, []);
 
   useEffect(() => {
     setNodes((current) => {
@@ -337,6 +387,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       nodes,
       edges,
       selectedNodeId,
+      selectedEdgeId,
       layout,
       onNodesChange,
       onEdgesChange,
@@ -344,15 +395,18 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       onNodesDelete,
       onEdgesDelete,
       selectNode,
+      selectEdge: setSelectedEdgeId,
       updateNode,
       addNode,
       deleteNode,
+      updateEdgeNote,
       applyLayout,
     }),
     [
       nodes,
       edges,
       selectedNodeId,
+      selectedEdgeId,
       layout,
       onNodesChange,
       onEdgesChange,
@@ -360,9 +414,11 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       onNodesDelete,
       onEdgesDelete,
       selectNode,
+      setSelectedEdgeId,
       updateNode,
       addNode,
       deleteNode,
+      updateEdgeNote,
       applyLayout,
     ],
   );
@@ -392,6 +448,8 @@ function initialNodes(graph: Graph, direction: LayoutDirection): Node<CourseNode
       term: node.term,
       status,
       disabled: false,
+      grade: undefined,
+      notes: '',
     };
     return {
       id: node.id,
@@ -428,6 +486,16 @@ function normalizeNodeUpdates(updates: Partial<CourseNodeData>): Partial<CourseN
   if (updates.title) {
     result.title = updates.title;
   }
+  if (updates.grade !== undefined) {
+    const trimmed = updates.grade?.toString().trim() ?? '';
+    result.grade = trimmed ? trimmed.toUpperCase() : undefined;
+  }
+  if (updates.notes !== undefined) {
+    result.notes = updates.notes;
+  }
+  if (updates.status) {
+    result.status = updates.status;
+  }
   if (updates.disabled !== undefined) {
     result.disabled = updates.disabled;
   }
@@ -452,10 +520,13 @@ function buildClassName(
 
   const isDisabled = node.data.disabled;
   const isCompleted = node.data.status === 'completed';
+  const isFailed = node.data.status === 'failed';
   const eligible = eligibilityMap.get(node.id) ?? true;
 
   if (isDisabled) {
-    classes.push('course-node--disabled');
+    classes.push('course-node--disabled', 'course-node--failed');
+  } else if (isFailed) {
+    classes.push('course-node--failed');
   } else if (isCompleted) {
     classes.push('course-node--completed');
   } else if (!eligible) {
@@ -476,4 +547,42 @@ function buildClassName(
 function hasMeaningfulExpression(expression: string): boolean {
   if (!expression) return false;
   return expression.trim().toUpperCase() !== 'NONE';
+}
+
+function deriveStatusFromGrade(grade?: string): CourseStatus | null {
+  if (!grade) return null;
+  const normalized = grade.trim().toUpperCase();
+  if (!normalized) return null;
+
+  const numeric = Number(normalized);
+  if (Number.isFinite(numeric)) {
+    return numeric >= 60 ? 'completed' : 'failed';
+  }
+
+  const score = letterGradeToScore(normalized);
+  if (score !== null) {
+    return score >= 60 ? 'completed' : 'failed';
+  }
+
+  return null;
+}
+
+function letterGradeToScore(letter: string): number | null {
+  const mapping: Record<string, number> = {
+    'A+': 98,
+    A: 95,
+    'A-': 91,
+    'B+': 88,
+    B: 85,
+    'B-': 81,
+    'C+': 78,
+    C: 75,
+    'C-': 71,
+    'D+': 68,
+    D: 65,
+    'D-': 61,
+    F: 50,
+  };
+
+  return mapping[letter] ?? null;
 }

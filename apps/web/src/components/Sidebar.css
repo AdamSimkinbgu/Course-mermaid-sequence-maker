@@ -90,12 +90,18 @@
 }
 
 .sidebar__field input,
-.sidebar__field select {
+.sidebar__field select,
+.sidebar__field textarea {
   padding: 0.45rem 0.5rem;
   border-radius: 6px;
   border: 1px solid #d1d5db;
   background: white;
   font-size: 0.9rem;
+}
+
+.sidebar__field textarea {
+  resize: vertical;
+  min-height: 120px;
 }
 
 .sidebar__field--inline {

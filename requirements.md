@@ -48,7 +48,9 @@ MVP (Excel-first)
   - [x] Node/edge create, edit, delete
     - apps/web/src/state/GraphContext.tsx:1
     - apps/web/src/components/Sidebar.tsx:1
-  - [ ] Notes on nodes/edges
+  - [x] Notes on nodes/edges
+    - apps/web/src/components/Sidebar.tsx:1
+    - apps/web/src/state/GraphContext.tsx:1
   - [ ] Undo/redo and autosave
   - [ ] Group containers with collapse/expand
   - [x] Layout toolbar (LR/TD, ELK/Dagre)
@@ -58,6 +60,9 @@ MVP (Excel-first)
     - apps/web/src/state/GraphContext.tsx:1
     - apps/web/src/components/Sidebar.tsx:1
     - apps/web/src/styles/app.css:1
+  - [x] Ability to grade nodes with a score (0-100/A+-F), courses that are grade marked under a threshold have their status assigned to failed, otherwise completed
+    - apps/web/src/components/Sidebar.tsx:1
+    - apps/web/src/state/GraphContext.tsx:1
   - [ ] Theming and node badges
   - [ ] Mermaid code panel (editable, bidirectional)
 

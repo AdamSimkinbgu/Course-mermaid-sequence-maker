@@ -12,6 +12,7 @@ export function loadSampleGraph(): Graph {
         department: 'CS',
         level: '100',
         term: 'Fall',
+        status: 'completed',
       },
       {
         id: 'CS102',
@@ -21,6 +22,7 @@ export function loadSampleGraph(): Graph {
         department: 'CS',
         level: '100',
         term: 'Spring',
+        status: 'completed',
       },
       {
         id: 'CS201',
@@ -30,6 +32,7 @@ export function loadSampleGraph(): Graph {
         department: 'CS',
         level: '200',
         term: 'Fall',
+        status: 'completed',
       },
       {
         id: 'CS202',
@@ -39,6 +42,7 @@ export function loadSampleGraph(): Graph {
         department: 'CS',
         level: '200',
         term: 'Spring',
+        status: 'in_progress',
       },
       {
         id: 'CS204',
@@ -48,6 +52,7 @@ export function loadSampleGraph(): Graph {
         department: 'MATH',
         level: '200',
         term: 'Spring',
+        status: 'planned',
       },
       {
         id: 'CS310',
@@ -57,6 +62,7 @@ export function loadSampleGraph(): Graph {
         department: 'CS',
         level: '300',
         term: 'Fall',
+        status: 'planned',
       },
     ],
     edges: [
