@@ -102,9 +102,9 @@
   --node-available-bg: #1f2937;
   --node-available-border: rgba(148, 163, 184, 0.6);
   --node-available-text: #e2e8f0;
-  --node-completed-bg: rgba(34, 197, 94, 0.15);
-  --node-completed-border: rgba(34, 197, 94, 0.6);
-  --node-completed-text: #c4f1c7;
+  --node-completed-bg: rgba(34, 197, 94, 0.35);
+  --node-completed-border: rgba(34, 197, 94, 0.8);
+  --node-completed-text: #dcfce7;
   --node-blocked-bg: rgba(148, 163, 184, 0.1);
   --node-blocked-border: rgba(148, 163, 184, 0.35);
   --node-blocked-text: #cbd5f5;

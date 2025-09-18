@@ -4,6 +4,13 @@
   gap: 0.4rem;
 }
 
+.course-node__container .react-flow__handle {
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+  border: 2px solid #ffffff;
+}
+
 .course-node__header {
   display: flex;
   align-items: center;

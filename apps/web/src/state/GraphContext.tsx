@@ -233,20 +233,20 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
 
         if (normalized.grade !== undefined) {
           const gradeStatus = deriveStatusFromGrade(merged.grade);
-          if (gradeStatus) {
+          if (gradeStatus && !merged.disabled) {
             merged.status = gradeStatus;
-          } else if (!merged.disabled && merged.status === 'failed') {
+          } else if (!gradeStatus && !merged.disabled && merged.status === 'failed') {
             merged.status = 'planned';
           }
         }
 
         if (normalized.disabled !== undefined) {
-          if (merged.disabled) {
-            merged.status = 'failed';
-          } else if (merged.grade) {
-            const gradeStatus = deriveStatusFromGrade(merged.grade);
-            if (gradeStatus) {
-              merged.status = gradeStatus;
+          if (!merged.disabled) {
+            if (merged.grade) {
+              const gradeStatus = deriveStatusFromGrade(merged.grade);
+              if (gradeStatus) {
+                merged.status = gradeStatus;
+              }
             }
           }
         }
@@ -506,11 +506,11 @@ function normalizeNodeUpdates(updates: Partial<CourseNodeData>): Partial<CourseN
   if (updates.notes !== undefined) {
     result.notes = updates.notes;
   }
-  if (updates.status) {
-    result.status = updates.status;
-  }
   if (updates.disabled !== undefined) {
     result.disabled = updates.disabled;
+  }
+  if (updates.status) {
+    result.status = updates.status;
   }
   return result;
 }

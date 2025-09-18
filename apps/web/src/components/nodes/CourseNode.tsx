@@ -1,4 +1,4 @@
-import type { NodeProps } from 'reactflow';
+import { Handle, Position, type NodeProps } from 'reactflow';
 
 import type { CourseNodeData } from '../../state/GraphContext';
 
@@ -24,6 +24,8 @@ function statusLabel(status: CourseNodeData['status'], disabled: boolean): strin
 export function CourseNode({ data, selected }: NodeProps<CourseNodeData>): JSX.Element {
   return (
     <div className="course-node__container">
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
       <div className="course-node__header">
         <span className="course-node__code">{data.courseId}</span>
         <div className="course-node__badges">
