@@ -76,6 +76,10 @@ interface GraphContextValue {
   deleteNode: (id: string) => void;
   updateEdgeNote: (id: string, note: string) => void;
   applyLayout: (overrides?: Partial<LayoutSettings>) => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const GraphContext = createContext<GraphContextValue | undefined>(undefined);
@@ -102,6 +106,20 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
+  const historyRef = useRef<GraphSnapshot[]>([]);
+  const historyIndexRef = useRef(-1);
+  const lastSerializedRef = useRef<string | null>(null);
+  const isRestoringRef = useRef(false);
+  const hasInitializedHistoryRef = useRef(false);
+  const [historyStatus, setHistoryStatus] = useState({ canUndo: false, canRedo: false });
+
+  const updateHistoryStatus = useCallback(() => {
+    const canUndo = historyIndexRef.current > 0;
+    const canRedo =
+      historyIndexRef.current >= 0 && historyIndexRef.current < historyRef.current.length - 1;
+    setHistoryStatus({ canUndo, canRedo });
+  }, []);
+
   const nodeVisualSignature = useMemo(
     () =>
       nodes
@@ -112,6 +130,29 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         .join('|'),
     [nodes],
   );
+
+  useEffect(() => {
+    const snapshot = captureSnapshot(nodes, edges, expressions);
+    const serialized = serializeSnapshot(snapshot);
+
+    if (!hasInitializedHistoryRef.current) {
+      historyRef.current = [snapshot];
+      historyIndexRef.current = 0;
+      lastSerializedRef.current = serialized;
+      hasInitializedHistoryRef.current = true;
+      updateHistoryStatus();
+      return;
+    }
+
+    if (isRestoringRef.current) return;
+    if (serialized === lastSerializedRef.current) return;
+
+    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    historyRef.current.push(snapshot);
+    historyIndexRef.current = historyRef.current.length - 1;
+    lastSerializedRef.current = serialized;
+    updateHistoryStatus();
+  }, [nodes, edges, expressions, updateHistoryStatus]);
 
   const getExpression = useCallback(
     (courseId: string) => expressions.get(courseId) ?? 'NONE',
@@ -357,6 +398,40 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
     );
   }, []);
 
+  const restoreSnapshot = useCallback(
+    (snapshot: GraphSnapshot) => {
+      isRestoringRef.current = true;
+      setExpressions(new Map(snapshot.expressions));
+      setEdges(snapshot.edges.map((edge) => cloneEdge(edge)));
+      setNodes(snapshot.nodes.map((node) => cloneNode(node)));
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      lastSerializedRef.current = serializeSnapshot(snapshot);
+      setTimeout(() => {
+        isRestoringRef.current = false;
+      }, 0);
+    },
+    [],
+  );
+
+  const undo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    const nextIndex = historyIndexRef.current - 1;
+    const snapshot = historyRef.current[nextIndex];
+    historyIndexRef.current = nextIndex;
+    restoreSnapshot(snapshot);
+    updateHistoryStatus();
+  }, [restoreSnapshot, updateHistoryStatus]);
+
+  const redo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    const nextIndex = historyIndexRef.current + 1;
+    const snapshot = historyRef.current[nextIndex];
+    historyIndexRef.current = nextIndex;
+    restoreSnapshot(snapshot);
+    updateHistoryStatus();
+  }, [restoreSnapshot, updateHistoryStatus]);
+
   useEffect(() => {
     setNodes((current) => {
       const statusMap = new Map<string, CourseStatus>();
@@ -442,6 +517,10 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       deleteNode,
       updateEdgeNote,
       applyLayout,
+      undo,
+      redo,
+      canUndo: historyStatus.canUndo,
+      canRedo: historyStatus.canRedo,
     }),
     [
       nodes,
@@ -461,6 +540,9 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       deleteNode,
       updateEdgeNote,
       applyLayout,
+      undo,
+      redo,
+      historyStatus,
     ],
   );
 
@@ -627,6 +709,45 @@ function letterGradeToScore(letter: string): number | null {
   };
 
   return mapping[letter] ?? null;
+}
+
+interface GraphSnapshot {
+  nodes: Node<CourseNodeData>[];
+  edges: Edge[];
+  expressions: [string, string][];
+}
+
+function captureSnapshot(
+  nodes: Node<CourseNodeData>[],
+  edges: Edge[],
+  expressions: Map<string, string>,
+): GraphSnapshot {
+  return {
+    nodes: nodes.map((node) => cloneNode(node)),
+    edges: edges.map((edge) => cloneEdge(edge)),
+    expressions: Array.from(expressions.entries()),
+  };
+}
+
+function serializeSnapshot(snapshot: GraphSnapshot): string {
+  return JSON.stringify(snapshot);
+}
+
+function cloneNode(node: Node<CourseNodeData>): Node<CourseNodeData> {
+  return {
+    ...node,
+    position: { ...node.position },
+    data: { ...node.data },
+    style: node.style ? { ...node.style } : undefined,
+  };
+}
+
+function cloneEdge(edge: Edge): Edge {
+  return {
+    ...edge,
+    data: edge.data ? { ...edge.data } : undefined,
+    style: edge.style ? { ...edge.style } : undefined,
+  };
 }
 
 function enforceNodeSpacing(
