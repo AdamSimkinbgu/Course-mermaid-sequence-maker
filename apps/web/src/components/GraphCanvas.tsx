@@ -61,10 +61,9 @@ export function GraphCanvas(): JSX.Element {
   const edgeTypes = useMemo(() => ({ smart: SmoothStepEdge }), []);
   const defaultEdgeOptions = useMemo(
     () => ({
-      type: 'smart' as const,
-      style: { strokeWidth: 2 },
-      markerEnd: { type: MarkerType.ArrowClosed },
-      pathOptions: { borderRadius: 24 },
+      type: 'bezier' as const,
+      style: { strokeWidth: 3 },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
     }),
     [],
   );
