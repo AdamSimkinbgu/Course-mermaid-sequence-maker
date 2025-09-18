@@ -6,6 +6,11 @@ export type PrereqAst =
   | { type: 'AND'; left: PrereqAst; right: PrereqAst }
   | { type: 'OR'; left: PrereqAst; right: PrereqAst };
 
+export interface GroupingAnalysis {
+  mandatory: CourseId[];
+  groups: CourseId[][];
+}
+
 export type CourseStatus = 'completed' | 'in_progress' | 'planned' | 'failed' | 'unknown';
 
 export interface ParserErrorDetails {
@@ -219,4 +224,93 @@ export function validateExpressionIds(ast: PrereqAst, knownIds: Set<CourseId>): 
   const unknown: CourseId[] = [];
   refs.forEach(id => { if (!knownIds.has(id)) unknown.push(id); });
   return { unknown };
+}
+
+export function analyzeGrouping(ast: PrereqAst): GroupingAnalysis {
+  const clauses = uniqueClauses(collectClauses(ast));
+  if (clauses.length === 0) {
+    return { mandatory: [], groups: [] };
+  }
+
+  if (clauses.some((clause) => clause.length === 0)) {
+    // If any clause requires no courses (e.g., NONE), overall expression is satisfiable without prerequisites.
+    return { mandatory: [], groups: [] };
+  }
+
+  const mandatory = intersectClauses(clauses);
+  const mandatorySet = new Set(mandatory);
+  const groups = clauses
+    .map((clause) => clause.filter((courseId) => !mandatorySet.has(courseId)))
+    .filter((clause) => clause.length > 0)
+    .map((clause) => clause.slice().sort(compareCourseId));
+
+  groups.sort(compareClause);
+  return { mandatory: mandatory.slice().sort(compareCourseId), groups };
+}
+
+function collectClauses(ast: PrereqAst): CourseId[][] {
+  switch (ast.type) {
+    case 'NONE':
+      return [[]];
+    case 'COURSE':
+      return [[ast.id]];
+    case 'AND': {
+      const leftClauses = collectClauses(ast.left);
+      const rightClauses = collectClauses(ast.right);
+      const result: CourseId[][] = [];
+      for (const left of leftClauses) {
+        for (const right of rightClauses) {
+          result.push(mergeClauses(left, right));
+        }
+      }
+      return result;
+    }
+    case 'OR':
+      return [...collectClauses(ast.left), ...collectClauses(ast.right)];
+  }
+}
+
+function mergeClauses(left: CourseId[], right: CourseId[]): CourseId[] {
+  const merged = new Set<CourseId>();
+  left.forEach((id) => merged.add(id));
+  right.forEach((id) => merged.add(id));
+  return Array.from(merged).sort(compareCourseId);
+}
+
+function uniqueClauses(clauses: CourseId[][]): CourseId[][] {
+  const seen = new Map<string, CourseId[]>();
+  for (const clause of clauses) {
+    const sorted = clause.slice().sort(compareCourseId);
+    const key = sorted.join('||');
+    if (!seen.has(key)) {
+      seen.set(key, sorted);
+    }
+  }
+  return Array.from(seen.values());
+}
+
+function intersectClauses(clauses: CourseId[][]): CourseId[] {
+  if (clauses.length === 0) return [];
+  let intersection = new Set<CourseId>(clauses[0]);
+  for (let i = 1; i < clauses.length; i++) {
+    const clauseSet = new Set<CourseId>(clauses[i]);
+    intersection = new Set(Array.from(intersection).filter((id) => clauseSet.has(id)));
+    if (intersection.size === 0) break;
+  }
+  return Array.from(intersection);
+}
+
+function compareClause(a: CourseId[], b: CourseId[]): number {
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const cmp = compareCourseId(a[i]!, b[i]!);
+    if (cmp !== 0) return cmp;
+  }
+  return a.length - b.length;
+}
+
+function compareCourseId(a: CourseId, b: CourseId): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
 }

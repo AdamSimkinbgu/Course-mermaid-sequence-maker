@@ -14,7 +14,9 @@
     "build": "npm run -ws build",
     "dev": "npm run -ws dev",
     "typecheck": "npm run -ws typecheck",
-    "test:smoke": "npm run build && node scripts/smoke.mjs",
+    "test": "npm run test:smoke && npm run test:grouping",
+    "test:smoke": "npx tsc -b packages/parser-excel && node --test scripts/smoke.mjs",
+    "test:grouping": "npx tsc -b packages/core packages/expression packages/parser-excel && node --test packages/core/test/*.mjs packages/expression/test/*.mjs packages/parser-excel/test/*.mjs",
     "lint": "echo \"Add eslint later\"",
     "format": "echo \"Add prettier later\""
   },

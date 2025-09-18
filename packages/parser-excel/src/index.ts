@@ -1,5 +1,5 @@
-import type { Graph, GraphNode, GraphEdge, CourseId } from '@course-dag/core';
-import { parseExpression, type PrereqAst, referencedCourseIds } from '@course-dag/expression';
+import { validateGraph, type Graph, type GraphEdge, type GraphNode, type CourseId } from '@course-dag/core';
+import { parseExpression, type PrereqAst, referencedCourseIds, analyzeGrouping } from '@course-dag/expression';
 
 export interface ParseResult {
   graph: Graph;
@@ -47,10 +47,31 @@ export function parseRows(rows: Array<Record<string, string>>): ParseResult {
     refs.forEach((sourceId) => {
       if (!seen.has(sourceId)) {
         diagnostics.push(`Course '${targetId}' references unknown prerequisite '${sourceId}'`);
+      }
+    });
+
+    const { mandatory, groups } = analyzeGrouping(ast);
+    const localEdgeKeys = new Set<string>();
+    const addEdge = (sourceId: CourseId, groupingId?: string) => {
+      if (!seen.has(sourceId)) {
         return;
       }
+      const key = `${sourceId}::${groupingId ?? ''}`;
+      if (localEdgeKeys.has(key)) {
+        return;
+      }
+      localEdgeKeys.add(key);
       const id = `e${++edgeCounter}`;
-      edges.push({ id, source: sourceId, target: targetId });
+      const edge: GraphEdge = { id, source: sourceId, target: targetId };
+      if (groupingId) edge.groupingId = groupingId;
+      edges.push(edge);
+    };
+
+    mandatory.forEach((courseId) => addEdge(courseId));
+
+    groups.forEach((courses, index) => {
+      const groupingId = `${targetId}::g${index + 1}`;
+      courses.forEach((courseId) => addEdge(courseId, groupingId));
     });
   }
 
@@ -66,6 +87,11 @@ export function parseRows(rows: Array<Record<string, string>>): ParseResult {
     edges,
     prereqExpressions: Array.from(exprByCourse, ([courseId, ast]) => ({ courseId, expression: exprFor(ast) }))
   };
+
+  const { valid, errors } = validateGraph(graph);
+  if (!valid) {
+    errors.forEach((err) => diagnostics.push(`Schema validation: ${err}`));
+  }
   return { graph, diagnostics };
 }
 
