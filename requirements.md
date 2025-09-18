@@ -18,8 +18,10 @@ MVP (Excel-first)
     - Code: packages/expression/src/index.ts:1
   - [x] Utilities: stringify, referenced IDs, ID validation
     - Code: packages/expression/src/index.ts:1
-  - [ ] Grouping metadata from AST (groupingId for AND/OR edge groups)
-  - [ ] Unit tests covering parser/evaluator and edge cases
+  - [x] Grouping metadata from AST (groupingId for AND/OR edge groups)
+    - Code: packages/expression/src/index.ts:229
+  - [x] Unit tests covering parser/evaluator and edge cases
+    - Tests: packages/expression/test/*.mjs
 
 - Deterministic CSV/Excel importer
   - [x] Schema validation (required columns, unique course_id)
