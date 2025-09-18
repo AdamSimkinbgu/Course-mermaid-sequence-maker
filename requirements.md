@@ -63,7 +63,10 @@ MVP (Excel-first)
   - [x] Ability to grade nodes with a score (0-100/A+-F), courses that are grade marked under a threshold have their status assigned to failed, otherwise completed
     - apps/web/src/components/Sidebar.tsx:1
     - apps/web/src/state/GraphContext.tsx:1
-  - [ ] Theming and node badges
+  - [x] Theming and node badges
+    - apps/web/src/theme/ThemeContext.tsx:1
+    - apps/web/src/components/nodes/CourseNode.tsx:1
+    - apps/web/src/styles/global.css:1
   - [ ] Mermaid code panel (editable, bidirectional)
 
 - Persistence, sharing, and auth

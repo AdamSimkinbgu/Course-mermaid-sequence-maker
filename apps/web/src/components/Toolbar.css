@@ -3,9 +3,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1.5rem;
-  background: #0b1120;
-  color: white;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--toolbar-bg);
+  color: var(--toolbar-text);
+  border-bottom: 1px solid var(--toolbar-border, rgba(255, 255, 255, 0.08));
 }
 
 .toolbar__branding {
@@ -36,8 +36,8 @@
 }
 
 .toolbar__button {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--toolbar-button-bg);
+  border: 1px solid var(--toolbar-button-border);
   border-radius: 6px;
   color: inherit;
   padding: 0.45rem 0.9rem;
@@ -47,18 +47,27 @@
 }
 
 .toolbar__button--primary {
-  background: #22c55e;
-  border-color: rgba(22, 163, 74, 0.3);
-  color: #022c22;
+  background: var(--toolbar-primary-bg);
+  border-color: var(--toolbar-primary-border);
+  color: var(--toolbar-primary-text);
 }
 
 .toolbar__button--primary:hover {
-  background: #16a34a;
-  color: white;
+  background: var(--toolbar-primary-hover);
+  color: var(--toolbar-text);
 }
 
 .toolbar__button:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--toolbar-button-hover);
+}
+
+.toolbar__button--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.toolbar__button--ghost:hover {
+  background: var(--toolbar-button-hover);
 }
 
 .toolbar__group {
@@ -75,8 +84,8 @@
 }
 
 .toolbar__group select {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--toolbar-select-bg, rgba(255, 255, 255, 0.12));
+  border: 1px solid var(--toolbar-select-border, rgba(255, 255, 255, 0.2));
   color: inherit;
   padding: 0.35rem 0.5rem;
   border-radius: 6px;

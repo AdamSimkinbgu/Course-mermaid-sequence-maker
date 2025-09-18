@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -12,6 +12,7 @@ import {
 } from 'reactflow';
 
 import { useGraph } from '../state/GraphContext';
+import { CourseNode } from './nodes/CourseNode';
 
 export function GraphCanvas(): JSX.Element {
   const {
@@ -52,12 +53,15 @@ export function GraphCanvas(): JSX.Element {
     [selectNode, selectEdge],
   );
 
+  const nodeTypes = useMemo(() => ({ course: CourseNode }), []);
+
   return (
     <ReactFlow
       fitView
       className="graph-canvas"
       nodes={nodes}
       edges={edges}
+      nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}

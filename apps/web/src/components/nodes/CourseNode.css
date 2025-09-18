@@ -1,0 +1,83 @@
+.course-node__container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.course-node__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-subtle);
+}
+
+.course-node__code {
+  font-weight: 600;
+}
+
+.course-node__badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.course-node__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.course-node__badge--grade {
+  background: var(--node-badge-grade-bg);
+  color: var(--node-badge-grade-text);
+}
+
+.course-node__badge--status {
+  background: var(--node-badge-bg);
+  color: var(--node-badge-text);
+}
+
+.course-node__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: inherit;
+}
+
+.course-node__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-text-subtle);
+}
+
+.course-node__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--node-chip-bg);
+  color: var(--node-chip-text);
+}
+
+.course-node__notes {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--color-text-subtle);
+  max-height: 3.6rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+*** End Patch
+PATCH

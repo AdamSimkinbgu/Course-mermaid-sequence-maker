@@ -214,6 +214,13 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
     }
   }, []);
 
+  const selectEdge = useCallback((id: string | null) => {
+    setSelectedEdgeId(id);
+    if (id !== null) {
+      setSelectedNodeId(null);
+    }
+  }, []);
+
   const updateNode = useCallback((id: string, updates: Partial<CourseNodeData>) => {
     setNodes((current) =>
       current.map((node) => {
@@ -272,6 +279,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         id,
         position: { x: 0, y: 0 },
         data: baseData,
+        type: 'course',
         className: 'course-node course-node--available',
       };
       setNodes((current) =>
@@ -309,7 +317,11 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
                 ...edge.data,
                 note,
               },
-              label: note ? note : edge.label,
+              label: note
+                ? note
+                : edge.data?.groupingId
+                ? `Group ${(edge.data.groupingId as string).split('::').pop()}`
+                : undefined,
             }
           : edge,
       ),
@@ -395,7 +407,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       onNodesDelete,
       onEdgesDelete,
       selectNode,
-      selectEdge: setSelectedEdgeId,
+      selectEdge,
       updateNode,
       addNode,
       deleteNode,
@@ -414,7 +426,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       onNodesDelete,
       onEdgesDelete,
       selectNode,
-      setSelectedEdgeId,
+      selectEdge,
       updateNode,
       addNode,
       deleteNode,
@@ -455,6 +467,7 @@ function initialNodes(graph: Graph, direction: LayoutDirection): Node<CourseNode
       id: node.id,
       position: { x: 0, y: 0 },
       data,
+      type: 'course',
       className: 'course-node course-node--available',
     };
   });

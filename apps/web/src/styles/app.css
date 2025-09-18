@@ -13,7 +13,7 @@
 }
 
 .graph-canvas {
-  background: #ffffff;
+  background: var(--panel-bg);
 }
 
 .graph-panel {
@@ -22,10 +22,10 @@
   gap: 0.25rem;
   font-size: 0.85rem;
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--panel-bg);
   border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-  color: #0f172a;
+  box-shadow: 0 10px 30px var(--node-shadow);
+  color: var(--color-text-primary);
 }
 
 .graph-panel strong {
@@ -41,53 +41,54 @@
   width: 220px;
   padding: 0.75rem 0.9rem;
   border-radius: 12px;
-  border: 2px solid #cbd5f5;
-  background: #ffffff;
-  color: #0f172a;
+  border: 2px solid var(--node-available-border);
+  background: var(--node-available-bg);
+  color: var(--node-available-text);
   font-size: 0.85rem;
   font-weight: 500;
   letter-spacing: -0.01em;
-  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 18px 32px var(--node-shadow);
   transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
   white-space: pre-wrap;
 }
 
 .react-flow__node.course-node.course-node--available {
-  background: #ffffff;
-  border-color: #cbd5f5;
+  background: var(--node-available-bg);
+  border-color: var(--node-available-border);
+  color: var(--node-available-text);
 }
 
 .react-flow__node.course-node.course-node--completed {
-  background: #dcfce7;
-  border-color: #16a34a;
-  color: #14532d;
+  background: var(--node-completed-bg);
+  border-color: var(--node-completed-border);
+  color: var(--node-completed-text);
 }
 
 .react-flow__node.course-node.course-node--blocked {
-  background: #e5e7eb;
-  border-color: #cbd5f5;
-  color: #475569;
+  background: var(--node-blocked-bg);
+  border-color: var(--node-blocked-border);
+  color: var(--node-blocked-text);
 }
 
 .react-flow__node.course-node.course-node--failed,
 .react-flow__node.course-node.course-node--disabled {
-  background: #fee2e2;
-  border-color: #ef4444;
-  color: #991b1b;
-  box-shadow: 0 18px 30px rgba(220, 38, 38, 0.25);
+  background: var(--node-failed-bg);
+  border-color: var(--node-failed-border);
+  color: var(--node-failed-text);
+  box-shadow: 0 18px 30px var(--node-shadow);
 }
 
 .react-flow__node.course-node.course-node--current {
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.45);
-  border-color: #2563eb;
+  box-shadow: 0 0 0 4px var(--node-shadow-selected);
+  border-color: rgba(59, 130, 246, 0.65);
 }
 
 .react-flow__node.course-node.course-node--prereq:not(.course-node--current) {
-  box-shadow: 0 0 0 4px rgba(253, 224, 71, 0.55);
+  box-shadow: 0 0 0 4px var(--node-shadow-prereq);
 }
 
 .react-flow__node.course-node:hover {
-  box-shadow: 0 18px 36px rgba(30, 64, 175, 0.2);
+  box-shadow: 0 18px 36px var(--node-shadow-hover);
 }
 
 @media (max-width: 960px) {

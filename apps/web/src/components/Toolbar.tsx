@@ -1,4 +1,5 @@
 import { useGraph } from '../state/GraphContext';
+import { useTheme } from '../theme/ThemeContext';
 
 import './Toolbar.css';
 
@@ -9,6 +10,7 @@ interface ToolbarProps {
 
 export function Toolbar({ sidebarOpen, onToggleSidebar }: ToolbarProps): JSX.Element {
   const { addNode, applyLayout, layout } = useGraph();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <header className="toolbar">
@@ -54,6 +56,9 @@ export function Toolbar({ sidebarOpen, onToggleSidebar }: ToolbarProps): JSX.Ele
           className="toolbar__button toolbar__button--primary"
         >
           Add course
+        </button>
+        <button type="button" onClick={toggleTheme} className="toolbar__button toolbar__button--ghost">
+          {theme === 'light' ? '🌙 Dark mode' : '☀️ Light mode'}
         </button>
         <button type="button" onClick={onToggleSidebar} className="toolbar__button">
           {sidebarOpen ? 'Hide details' : 'Show details'}
