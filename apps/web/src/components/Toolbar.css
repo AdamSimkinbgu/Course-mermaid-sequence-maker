@@ -1,0 +1,84 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background: #0b1120;
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.toolbar__branding {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.toolbar__logo {
+  font-size: 1.75rem;
+}
+
+.toolbar__branding h1 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.toolbar__branding p {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.toolbar__button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  color: inherit;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.toolbar__button--primary {
+  background: #22c55e;
+  border-color: rgba(22, 163, 74, 0.3);
+  color: #022c22;
+}
+
+.toolbar__button--primary:hover {
+  background: #16a34a;
+  color: white;
+}
+
+.toolbar__button:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.toolbar__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.toolbar__group label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.toolbar__group select {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: inherit;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}

@@ -42,14 +42,25 @@ MVP (Excel-first)
     - Template: resources/templates/courses-template.csv:1
 
 - Editor (React Flow + ELK/Dagre)
-  - [ ] Web app scaffold (Vite/Next)
-    - apps/web/README.md:1
-  - [ ] Node/edge create, edit, delete
+  - [x] Web app scaffold (Vite)
+    - apps/web/vite.config.ts:1
+    - apps/web/src/main.tsx:1
+  - [x] Node/edge create, edit, delete
+    - apps/web/src/state/GraphContext.tsx:1
+    - apps/web/src/components/Sidebar.tsx:1
   - [ ] Notes on nodes/edges
   - [ ] Undo/redo and autosave
   - [ ] Group containers with collapse/expand
-  - [ ] Layout toolbar (LR/TD, ELK/Dagre)
+  - [x] Layout toolbar (LR/TD, ELK/Dagre)
+    - apps/web/src/components/Toolbar.tsx:1
+    - apps/web/src/utils/layout.ts:1
   - [ ] Status marking and eligibility highlighting
+    - Grayd out nodes represents ineligible nodes
+    - Green nodes represents completed nodes
+    - White nodes represents available nodes (eligible but not completed)
+    - Blue nodes represents current node (the node being viewed/edited)
+    - Yellow nodes represents nodes that are prerequisites for the current node
+    - Red nodes represents nodes that were disabled by the user (but may still be prerequisites for other nodes), and are shown in red to indicate that they are not part of the current plan (Some courses are a part of a selected plan, but selecting one or more of the courses blocks other courses from being taken)
   - [ ] Theming and node badges
   - [ ] Mermaid code panel (editable, bidirectional)
 
