@@ -11,6 +11,7 @@ interface SidebarFormState {
   level: string;
   term: string;
   status: CourseStatus;
+  disabled: boolean;
 }
 
 const STATUS_OPTIONS: CourseStatus[] = [
@@ -28,6 +29,7 @@ const EMPTY_FORM: SidebarFormState = {
   level: '',
   term: '',
   status: 'planned',
+  disabled: false,
 };
 
 export function Sidebar(): JSX.Element {
@@ -59,6 +61,7 @@ export function Sidebar(): JSX.Element {
       level: selectedNode.data.level ?? '',
       term: selectedNode.data.term ?? '',
       status: selectedNode.data.status,
+      disabled: selectedNode.data.disabled,
     });
   }, [selectedNode]);
 
@@ -77,6 +80,14 @@ export function Sidebar(): JSX.Element {
         }
       }
     };
+
+  const handleToggleDisabled = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.checked;
+    setForm((current) => ({ ...current, disabled: nextValue }));
+    if (selectedNode) {
+      updateNode(selectedNode.id, { disabled: nextValue });
+    }
+  };
 
   const handleAddCourse = () => {
     addNode();
@@ -181,6 +192,21 @@ export function Sidebar(): JSX.Element {
                 placeholder="e.g. Fall"
               />
             </div>
+          </div>
+          <div className="sidebar__field sidebar__field--checkbox">
+            <label htmlFor="course-disabled">
+              <input
+                id="course-disabled"
+                type="checkbox"
+                checked={form.disabled}
+                onChange={handleToggleDisabled}
+              />
+              Exclude course from plan
+            </label>
+            <p className="sidebar__hint">
+              Disabled courses remain in the catalog but are highlighted in red and treated as unmet
+              prerequisites.
+            </p>
           </div>
         </form>
       ) : (

@@ -2,7 +2,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -21,6 +23,12 @@ import {
 } from 'reactflow';
 
 import type { Graph } from '@course-dag/core';
+import {
+  parseExpression,
+  evaluateAst,
+  referencedCourseIds,
+  type PrereqAst,
+} from '@course-dag/expression';
 
 import { loadSampleGraph } from './sampleData';
 import { applyDagreLayout, type LayoutDirection } from '../utils/layout';
@@ -36,6 +44,7 @@ export interface CourseNodeData {
   level?: string;
   term?: string;
   status: CourseStatus;
+  disabled: boolean;
 }
 
 export interface LayoutSettings {
@@ -67,11 +76,62 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
 
   const [layout, setLayout] = useState<LayoutSettings>({ engine: 'dagre', direction: 'LR' });
 
+  const initialExpressions = useMemo(() => {
+    return new Map<string, string>(
+      sampleGraph.prereqExpressions?.map(({ courseId, expression }) => [courseId, expression]) ??
+        [],
+    );
+  }, [sampleGraph]);
+
+  const [expressions, setExpressions] = useState<Map<string, string>>(initialExpressions);
+  const expressionAstCacheRef = useRef<Map<string, PrereqAst>>(new Map());
+
   const [nodes, setNodes] = useState<Node<CourseNodeData>[]>(() =>
     initialNodes(sampleGraph, layout.direction),
   );
   const [edges, setEdges] = useState<Edge[]>(() => initialEdges(sampleGraph));
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  const nodeVisualSignature = useMemo(
+    () =>
+      nodes
+        .map(
+          (node) =>
+            `${node.id}:${node.data.status}:${node.data.disabled}:${node.data.title}:${node.data.credits}`,
+        )
+        .join('|'),
+    [nodes],
+  );
+
+  const getExpression = useCallback(
+    (courseId: string) => expressions.get(courseId) ?? 'NONE',
+    [expressions],
+  );
+
+  const getAst = useCallback(
+    (courseId: string) => {
+      const expression = getExpression(courseId);
+      const cacheKey = `${courseId}::${expression}`;
+      const cached = expressionAstCacheRef.current.get(cacheKey);
+      if (cached) return cached;
+      const ast = parseExpression(expression);
+      expressionAstCacheRef.current.set(cacheKey, ast);
+      return ast;
+    },
+    [getExpression],
+  );
+
+  const getPrerequisiteSet = useCallback(
+    (courseId: string) => {
+      const expression = getExpression(courseId);
+      if (!hasMeaningfulExpression(expression)) {
+        return new Set<string>();
+      }
+      const ast = getAst(courseId);
+      return new Set(referencedCourseIds(ast));
+    },
+    [getAst, getExpression],
+  );
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -121,6 +181,11 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         ),
       );
       setSelectedNodeId((current) => (current && ids.has(current) ? null : current));
+      setExpressions((currentExpressions) => {
+        const next = new Map(currentExpressions);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
     },
     [edges, layout.direction],
   );
@@ -148,7 +213,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
           ...node.data,
           ...normalizeNodeUpdates(updates),
         };
-        merged.label = `${merged.courseId} · ${merged.title}`;
+        merged.label = formatLabel(merged.courseId, merged.title);
         return { ...node, data: merged };
       }),
     );
@@ -158,24 +223,35 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
     (node?: Partial<CourseNodeData>) => {
       const id = node?.courseId ?? `course-${Date.now()}`;
       const title = node?.title ?? 'New Course';
+      const baseData: CourseNodeData = {
+        label: '',
+        courseId: id,
+        title,
+        credits: node?.credits ?? 0,
+        department: node?.department,
+        level: node?.level,
+        term: node?.term,
+        status: node?.status ?? 'planned',
+        disabled: node?.disabled ?? false,
+      };
+      baseData.label = formatLabel(baseData.courseId, baseData.title);
       const newNode: Node<CourseNodeData> = {
         id,
         position: { x: 0, y: 0 },
-        data: {
-          label: `${id} · ${title}`,
-          courseId: id,
-          title,
-          credits: node?.credits ?? 0,
-          department: node?.department,
-          level: node?.level,
-          term: node?.term,
-          status: node?.status ?? 'planned',
-        },
+        data: baseData,
+        className: 'course-node course-node--available',
       };
       setNodes((current) =>
         applyDagreLayout([...current, newNode], edges, { direction: layout.direction }),
       );
       setSelectedNodeId(id);
+      setExpressions((currentExpressions) => {
+        const next = new Map(currentExpressions);
+        if (!next.has(id)) {
+          next.set(id, 'NONE');
+        }
+        return next;
+      });
       return id;
     },
     [edges, layout.direction],
@@ -189,6 +265,58 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
     },
     [nodes, onNodesDelete],
   );
+
+  useEffect(() => {
+    setNodes((current) => {
+      const statusMap = new Map<string, CourseStatus>();
+      current.forEach((node) => {
+        const statusValue = node.data.disabled ? 'failed' : node.data.status;
+        statusMap.set(node.id, statusValue);
+      });
+
+      const eligibilityMap = new Map<string, boolean>();
+      current.forEach((node) => {
+        const expression = getExpression(node.id);
+        let eligible = true;
+        if (hasMeaningfulExpression(expression)) {
+          const ast = getAst(node.id);
+          eligible = evaluateAst(ast, statusMap);
+        }
+        eligibilityMap.set(node.id, eligible);
+      });
+
+      const prereqSet = selectedNodeId
+        ? getPrerequisiteSet(selectedNodeId)
+        : new Set<string>();
+      if (selectedNodeId) {
+        prereqSet.delete(selectedNodeId);
+      }
+
+      let changed = false;
+      const next = current.map((node) => {
+        const className = buildClassName(node, {
+          eligibilityMap,
+          selectedNodeId,
+          prereqSet,
+        });
+        const label = formatLabel(node.data.courseId, node.data.title);
+        if (node.className !== className || node.data.label !== label) {
+          changed = true;
+          return {
+            ...node,
+            className,
+            data: {
+              ...node.data,
+              label,
+            },
+          };
+        }
+        return node;
+      });
+
+      return changed ? next : current;
+    });
+  }, [getAst, getExpression, getPrerequisiteSet, selectedNodeId, nodeVisualSignature]);
 
   const applyLayout = useCallback(
     (overrides?: Partial<LayoutSettings>) => {
@@ -254,19 +382,22 @@ function initialNodes(graph: Graph, direction: LayoutDirection): Node<CourseNode
   const nodes: Node<CourseNodeData>[] = graph.nodes.map((node) => {
     const title = node.title;
     const status = (node.status ?? 'planned') as CourseStatus;
+    const data: CourseNodeData = {
+      label: formatLabel(node.id, title),
+      courseId: node.id,
+      title,
+      credits: node.credits ?? 0,
+      department: node.department,
+      level: node.level ? String(node.level) : undefined,
+      term: node.term,
+      status,
+      disabled: false,
+    };
     return {
       id: node.id,
       position: { x: 0, y: 0 },
-      data: {
-        label: `${node.id} · ${title}`,
-        courseId: node.id,
-        title,
-        credits: node.credits ?? 0,
-        department: node.department,
-        level: node.level ? String(node.level) : undefined,
-        term: node.term,
-        status,
-      },
+      data,
+      className: 'course-node course-node--available',
     };
   });
 
@@ -297,5 +428,52 @@ function normalizeNodeUpdates(updates: Partial<CourseNodeData>): Partial<CourseN
   if (updates.title) {
     result.title = updates.title;
   }
+  if (updates.disabled !== undefined) {
+    result.disabled = updates.disabled;
+  }
   return result;
+}
+
+function formatLabel(courseId: string, title: string): string {
+  return `${courseId}\n${title}`;
+}
+
+interface NodeVisualContext {
+  eligibilityMap: Map<string, boolean>;
+  selectedNodeId: string | null;
+  prereqSet: Set<string>;
+}
+
+function buildClassName(
+  node: Node<CourseNodeData>,
+  { eligibilityMap, selectedNodeId, prereqSet }: NodeVisualContext,
+): string {
+  const classes = ['course-node'];
+
+  const isDisabled = node.data.disabled;
+  const isCompleted = node.data.status === 'completed';
+  const eligible = eligibilityMap.get(node.id) ?? true;
+
+  if (isDisabled) {
+    classes.push('course-node--disabled');
+  } else if (isCompleted) {
+    classes.push('course-node--completed');
+  } else if (!eligible) {
+    classes.push('course-node--blocked');
+  } else {
+    classes.push('course-node--available');
+  }
+
+  if (selectedNodeId === node.id) {
+    classes.push('course-node--current');
+  } else if (selectedNodeId && prereqSet.has(node.id)) {
+    classes.push('course-node--prereq');
+  }
+
+  return classes.join(' ');
+}
+
+function hasMeaningfulExpression(expression: string): boolean {
+  if (!expression) return false;
+  return expression.trim().toUpperCase() !== 'NONE';
 }
