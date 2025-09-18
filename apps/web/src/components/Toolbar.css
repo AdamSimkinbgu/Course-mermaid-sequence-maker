@@ -70,6 +70,23 @@
   background: var(--toolbar-button-hover);
 }
 
+.toolbar__button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toolbar__history {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.toolbar__autosave {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  min-width: 64px;
+  text-align: right;
+}
+
 .toolbar__group {
   display: flex;
   flex-direction: column;

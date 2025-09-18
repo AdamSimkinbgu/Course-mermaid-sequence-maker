@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -28,6 +28,8 @@ export function GraphCanvas(): JSX.Element {
     onEdgesDelete,
     selectNode,
     selectEdge,
+    undo,
+    redo,
   } = useGraph();
   const { theme } = useTheme();
 
@@ -69,6 +71,28 @@ export function GraphCanvas(): JSX.Element {
   );
 
   const backgroundColor = theme === 'dark' ? '#1f2735' : '#e2e8f0';
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey)) return;
+      if (event.altKey) return;
+
+      if (event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      } else if (event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo]);
 
   return (
     <ReactFlow

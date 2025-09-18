@@ -9,7 +9,7 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ sidebarOpen, onToggleSidebar }: ToolbarProps): JSX.Element {
-  const { addNode, applyLayout, layout } = useGraph();
+  const { addNode, applyLayout, layout, undo, redo, canUndo, canRedo, autosaveState } = useGraph();
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -57,12 +57,35 @@ export function Toolbar({ sidebarOpen, onToggleSidebar }: ToolbarProps): JSX.Ele
         >
           Add course
         </button>
+        <div className="toolbar__history">
+          <button
+            type="button"
+            onClick={undo}
+            disabled={!canUndo}
+            className="toolbar__button toolbar__button--ghost"
+            title="Undo (⌘/Ctrl+Z)"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            onClick={redo}
+            disabled={!canRedo}
+            className="toolbar__button toolbar__button--ghost"
+            title="Redo (⌘/Ctrl+Shift+Z)"
+          >
+            Redo
+          </button>
+        </div>
         <button type="button" onClick={toggleTheme} className="toolbar__button toolbar__button--ghost">
           {theme === 'light' ? '🌙 Dark mode' : '☀️ Light mode'}
         </button>
         <button type="button" onClick={onToggleSidebar} className="toolbar__button">
           {sidebarOpen ? 'Hide details' : 'Show details'}
         </button>
+        <span className="toolbar__autosave" aria-live="polite">
+          {autosaveState === 'saving' ? 'Saving…' : 'Saved'}
+        </span>
       </nav>
     </header>
   );
