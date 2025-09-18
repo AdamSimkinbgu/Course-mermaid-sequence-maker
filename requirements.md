@@ -55,6 +55,12 @@ MVP (Excel-first)
     - apps/web/src/components/Toolbar.tsx:1
     - apps/web/src/utils/layout.ts:1
   - [ ] Status marking and eligibility highlighting
+    - Grayd out nodes represents ineligible nodes
+    - Green nodes represents completed nodes
+    - White nodes represents available nodes (eligible but not completed)
+    - Blue nodes represents current node (the node being viewed/edited)
+    - Yellow nodes represents nodes that are prerequisites for the current node
+    - Red nodes represents nodes that were disabled by the user (but may still be prerequisites for other nodes), and are shown in red to indicate that they are not part of the current plan (Some courses are a part of a selected plan, but selecting one or more of the courses blocks other courses from being taken)
   - [ ] Theming and node badges
   - [ ] Mermaid code panel (editable, bidirectional)
 
