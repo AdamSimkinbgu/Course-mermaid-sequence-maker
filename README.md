@@ -26,5 +26,7 @@ Repo layout
 
 Getting started
 - See `docs/dev-setup.md` for local development workflow and environment variables.
-- Build packages and run smoke test:
-- `npm run test:smoke` (builds workspace packages, then parses the CSV template and prints a summary)
+- Install workspace dependencies once: `npm install`
+- Run the React editor locally: `npm run dev --workspace @course-dag/web`
+- Type-check the monorepo: `npm run typecheck`
+- smoke-test the Excel importer: `npm run test:smoke`

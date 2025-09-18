@@ -16,3 +16,8 @@ End-to-End (select flows)
 Fixtures
 - `resources/templates` for deterministic import tests.
 - `resources/pdftesting` (Phase 2) for OCR/AI pipeline validation.
+
+Commands
+- `npm run typecheck` – runs TypeScript on every workspace (web + packages).
+- `npm run test` – executes importer/unit suites across workspaces.
+- `npm run test:smoke` – rebuilds packages and ensures the template CSV imports without diagnostics.

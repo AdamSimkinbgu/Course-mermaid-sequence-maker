@@ -33,6 +33,10 @@ import {
 import { loadSampleGraph } from './sampleData';
 import { applyDagreLayout, type LayoutDirection } from '../utils/layout';
 
+const NODE_WIDTH = 220;
+const NODE_HEIGHT = 120;
+const NODE_GAP = 48;
+
 export type CourseStatus = 'completed' | 'in_progress' | 'planned' | 'failed' | 'unknown';
 
 export interface CourseNodeData {
@@ -141,7 +145,16 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      setNodes((current) => applyNodeChanges(changes, current));
+      const changedIds = new Set<string>();
+      changes.forEach((change) => {
+        if (change.type === 'position' || change.type === 'dimensions') {
+          changedIds.add(change.id);
+        }
+      });
+      setNodes((current) => {
+        const next = applyNodeChanges(changes, current);
+        return enforceNodeSpacing(next, changedIds);
+      });
     },
     [],
   );
@@ -164,11 +177,16 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
           },
           current,
         );
-        setNodes((nodes) => applyDagreLayout(nodes, updated, { direction: layout.direction }));
-        return updated;
-      });
-    },
-    [layout.direction],
+      setNodes((nodes) =>
+        enforceNodeSpacing(
+          applyDagreLayout(nodes, updated, { direction: layout.direction }),
+          new Set(),
+        ),
+      );
+      return updated;
+    });
+  },
+  [layout.direction],
   );
 
   const onNodesDelete = useCallback(
@@ -180,10 +198,13 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       );
       setEdges(filteredEdges);
       setNodes((current) =>
-        applyDagreLayout(
-          current.filter((node) => !ids.has(node.id)),
-          filteredEdges,
-          { direction: layout.direction },
+        enforceNodeSpacing(
+          applyDagreLayout(
+            current.filter((node) => !ids.has(node.id)),
+            filteredEdges,
+            { direction: layout.direction },
+          ),
+          new Set(),
         ),
       );
       setSelectedNodeId((current) => (current && ids.has(current) ? null : current));
@@ -202,7 +223,12 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       const ids = new Set(toDelete.map((edge) => edge.id));
       const filtered = edges.filter((edge) => !ids.has(edge.id));
       setEdges(filtered);
-      setNodes((current) => applyDagreLayout(current, filtered, { direction: layout.direction }));
+      setNodes((current) =>
+        enforceNodeSpacing(
+          applyDagreLayout(current, filtered, { direction: layout.direction }),
+          new Set(),
+        ),
+      );
     },
     [edges, layout.direction],
   );
@@ -283,7 +309,10 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         className: 'course-node course-node--available',
       };
       setNodes((current) =>
-        applyDagreLayout([...current, newNode], edges, { direction: layout.direction }),
+        enforceNodeSpacing(
+          applyDagreLayout([...current, newNode], edges, { direction: layout.direction }),
+          new Set([id]),
+        ),
       );
       setSelectedNodeId(id);
       setExpressions((currentExpressions) => {
@@ -598,4 +627,80 @@ function letterGradeToScore(letter: string): number | null {
   };
 
   return mapping[letter] ?? null;
+}
+
+function enforceNodeSpacing(
+  nodes: Node<CourseNodeData>[],
+  changedIds: Set<string>,
+  gap = NODE_GAP,
+): Node<CourseNodeData>[] {
+  if (nodes.length <= 1) return nodes;
+  const result = nodes.map((node) => ({
+    ...node,
+    position: { ...node.position },
+  }));
+
+  for (let i = 0; i < result.length; i++) {
+    for (let j = i + 1; j < result.length; j++) {
+      const nodeA = result[i]!;
+      const nodeB = result[j]!;
+
+      const aSize = getNodeDimensions(nodeA);
+      const bSize = getNodeDimensions(nodeB);
+
+      const ax = nodeA.position.x + aSize.width / 2;
+      const ay = nodeA.position.y + aSize.height / 2;
+      const bx = nodeB.position.x + bSize.width / 2;
+      const by = nodeB.position.y + bSize.height / 2;
+
+      let distance = Math.hypot(bx - ax, by - ay);
+      if (distance === 0) {
+        distance = 0.001;
+      }
+
+      const nx = (bx - ax) / distance;
+      const ny = (by - ay) / distance;
+
+      const extentA = Math.abs(nx) * aSize.width / 2 + Math.abs(ny) * aSize.height / 2;
+      const extentB = Math.abs(nx) * bSize.width / 2 + Math.abs(ny) * bSize.height / 2;
+
+      const requiredDistance = extentA + extentB + gap;
+
+      if (distance >= requiredDistance) {
+        continue;
+      }
+
+      const overlap = (requiredDistance - distance) / 2;
+
+      const aChanged = changedIds.has(nodeA.id);
+      const bChanged = changedIds.has(nodeB.id);
+
+      const moveA = (factor: number) => {
+        nodeA.position.x -= nx * factor * overlap * 2;
+        nodeA.position.y -= ny * factor * overlap * 2;
+      };
+
+      const moveB = (factor: number) => {
+        nodeB.position.x += nx * factor * overlap * 2;
+        nodeB.position.y += ny * factor * overlap * 2;
+      };
+
+      if (aChanged && !bChanged) {
+        moveB(1);
+      } else if (!aChanged && bChanged) {
+        moveA(1);
+      } else {
+        moveA(0.5);
+        moveB(0.5);
+      }
+    }
+  }
+
+  return result;
+}
+
+function getNodeDimensions(node: Node<CourseNodeData>): { width: number; height: number } {
+  const width = node.width ?? NODE_WIDTH;
+  const height = node.height ?? NODE_HEIGHT;
+  return { width, height };
 }

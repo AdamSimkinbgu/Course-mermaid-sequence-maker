@@ -1,32 +1,29 @@
 Editor UX
 
-Goals
-- Fast, intuitive graph editing with guardrails preventing invalid states.
-- Live eligibility highlighting driven by prerequisite expression evaluation.
+Goals (current milestone)
+- Provide a fast, legible way to explore prerequisite DAGs imported from Excel.
+- Surface eligibility and status at a glance through color and badges.
+- Keep the UI keyboard-friendly and themeable (light/dark).
 
-Core Interactions
-- Create node: drag from palette (course/group/note) or via hotkey.
-- Edit node: click to open side panel; fields: title, credits, department, level, term, status, badges, notes.
-- Create edge: start from source node; on drop, choose existing target or create a new course; cancel if unresolved.
-- Delete: select + delete key (with confirm if edges would be orphaned).
-- Grouping: containers that can collapse/expand; nodes show group membership.
-- Layout: toolbar to toggle LR/TD, choose ELK/Dagre, and re-run auto-layout; manual drags are preserved as hints.
-- Undo/redo: keyboard shortcuts; autosave debounced.
+Current capabilities
+- **Sample graph loading** – the editor boots with a curated dataset produced by the Excel importer; persistence/API wiring is still pending.
+- **Course editor sidebar** – editing fields (title, credits, department, level, term, status, grade, notes) instantly updates the graph. Grades auto-map to statuses and “Exclude course from plan” visually flags nodes without destroying their original status.
+- **Edge inspector** – selecting an edge opens a notes panel so prerequisite relationships can be annotated.
+- **Layout controls** – toolbar lets users re-run Dagre, switch between left→right and top→down orientation, toggle the detail sidebar, add placeholder courses, and change between light and dark themes.
+- **Eligibility highlighting** – prerequisite expressions are parsed/evaluated on the client; nodes derive class names (planned, in-progress, completed, blocked, failed/excluded). Selecting a course highlights its prerequisite path.
+- **Node spacing** – nodes repel each other to maintain a minimal gap and keep edges visible.
+- **Smooth edges** – `SmoothStep` edges bend around nodes to avoid visual overlap.
 
-Eligibility & Status
-- Status values: completed (✓), failed (✗), in_progress, planned, unknown.
-- Unmet prerequisites gray out dependent nodes and their edges; tooltips list missing prereqs.
-- Eligible next courses highlighted; badge counts credits per term/year.
+Not yet implemented (planned)
+- Drag palette / bulk creation tools.
+- Group containers with collapse/expand.
+- Undo/redo history and autosave to persistence layer.
+- Live Mermaid panel and exporter tooling.
+- Server-backed projects, sharing, and authentication flows.
 
-Mermaid Panel
-- Two-pane view: graph and Mermaid code.
-- Edits to Mermaid are parsed and reflected in the graph with validation; errors surfaced inline.
-- Export uses flowchart with subgraphs for groups; edges always between course nodes.
-
-Accessibility
-- Keyboard navigation: tab focus across nodes/edges, arrow key traversal, shortcuts listed in help.
-- Focus visibility with high contrast; hit target ≥ 24×24 CSS px.
-- Screen reader labels for nodes, edges, and controls; avoid color-only communication.
+Accessibility & theming
+- Light/dark themes driven by CSS custom properties; toolbar toggle persists the selection.
+- Handles and controls remain keyboard focusable (React Flow defaults). Further WCAG audits will be scheduled once grouping & persistence land.
 
 Internationalization
-- All text routable through i18n; RTL-aware layout for Hebrew.
+- All strings in the editor shell are routed through a simple translation helper (full EN/HE catalog to be completed alongside i18n milestone).

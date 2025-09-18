@@ -99,17 +99,17 @@
   --sidebar-button-secondary-text: #e2e8f0;
   --sidebar-hint: #94a3b8;
 
-  --node-available-bg: #1f2937;
-  --node-available-border: rgba(148, 163, 184, 0.6);
-  --node-available-text: #e2e8f0;
-  --node-completed-bg: rgba(34, 197, 94, 0.35);
-  --node-completed-border: rgba(34, 197, 94, 0.8);
-  --node-completed-text: #dcfce7;
-  --node-blocked-bg: rgba(148, 163, 184, 0.1);
-  --node-blocked-border: rgba(148, 163, 184, 0.35);
-  --node-blocked-text: #cbd5f5;
-  --node-failed-bg: rgba(248, 113, 113, 0.18);
-  --node-failed-border: rgba(248, 113, 113, 0.5);
+  --node-available-bg: #1f2737;
+  --node-available-border: #3f4c66;
+  --node-available-text: #f1f5f9;
+  --node-completed-bg: #14532d;
+  --node-completed-border: #22c55e;
+  --node-completed-text: #bbf7d0;
+  --node-blocked-bg: #1e293b;
+  --node-blocked-border: #475569;
+  --node-blocked-text: #e2e8f0;
+  --node-failed-bg: #7f1d1d;
+  --node-failed-border: #ef4444;
   --node-failed-text: #fecaca;
   --node-shadow: rgba(2, 6, 23, 0.4);
   --node-shadow-hover: rgba(59, 130, 246, 0.25);
@@ -121,8 +121,8 @@
   --node-badge-grade-text: #86efac;
   --node-badge-warning-bg: rgba(253, 224, 71, 0.32);
   --node-badge-warning-text: #fde68a;
-  --node-chip-bg: rgba(148, 163, 184, 0.18);
-  --node-chip-text: #cbd5f5;
+  --node-chip-bg: rgba(148, 163, 184, 0.28);
+  --node-chip-text: #e2e8f0;
 }
 
 * {

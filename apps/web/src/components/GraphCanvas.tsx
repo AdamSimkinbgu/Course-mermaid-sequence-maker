@@ -6,6 +6,7 @@ import {
   MiniMap,
   Panel,
   ReactFlow,
+  MarkerType,
   type Edge,
   type Node,
   type OnSelectionChangeParams,
@@ -13,6 +14,8 @@ import {
 
 import { useGraph } from '../state/GraphContext';
 import { CourseNode } from './nodes/CourseNode';
+import { useTheme } from '../theme/ThemeContext';
+import { SmoothStepEdge } from 'reactflow';
 
 export function GraphCanvas(): JSX.Element {
   const {
@@ -26,6 +29,7 @@ export function GraphCanvas(): JSX.Element {
     selectNode,
     selectEdge,
   } = useGraph();
+  const { theme } = useTheme();
 
   const handleSelectionChange = useCallback(
     (selection: OnSelectionChangeParams) => {
@@ -54,6 +58,18 @@ export function GraphCanvas(): JSX.Element {
   );
 
   const nodeTypes = useMemo(() => ({ course: CourseNode }), []);
+  const edgeTypes = useMemo(() => ({ smart: SmoothStepEdge }), []);
+  const defaultEdgeOptions = useMemo(
+    () => ({
+      type: 'smart' as const,
+      style: { strokeWidth: 2 },
+      markerEnd: { type: MarkerType.ArrowClosed },
+      pathOptions: { borderRadius: 24 },
+    }),
+    [],
+  );
+
+  const backgroundColor = theme === 'dark' ? '#1f2735' : '#e2e8f0';
 
   return (
     <ReactFlow
@@ -62,6 +78,8 @@ export function GraphCanvas(): JSX.Element {
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
+      defaultEdgeOptions={defaultEdgeOptions}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
@@ -77,7 +95,7 @@ export function GraphCanvas(): JSX.Element {
       </Panel>
       <MiniMap zoomable pannable />
       <Controls position="bottom-left" showInteractive />
-      <Background gap={24} color="#f3f4f6" variant={BackgroundVariant.Lines} />
+      <Background gap={24} color={backgroundColor} variant={BackgroundVariant.Lines} />
     </ReactFlow>
   );
 }

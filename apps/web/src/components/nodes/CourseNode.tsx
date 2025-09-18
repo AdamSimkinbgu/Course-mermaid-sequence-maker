@@ -1,6 +1,6 @@
 import { Handle, Position, type NodeProps } from 'reactflow';
 
-import type { CourseNodeData } from '../../state/GraphContext';
+import { useGraph, type CourseNodeData } from '../../state/GraphContext';
 
 import './CourseNode.css';
 
@@ -22,10 +22,15 @@ function statusLabel(status: CourseNodeData['status'], disabled: boolean): strin
 }
 
 export function CourseNode({ data, selected }: NodeProps<CourseNodeData>): JSX.Element {
+  const { layout } = useGraph();
+  const isHorizontal = layout.direction === 'LR';
+  const targetPosition = isHorizontal ? Position.Left : Position.Top;
+  const sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
+
   return (
     <div className="course-node__container">
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="target" position={targetPosition} />
+      <Handle type="source" position={sourcePosition} />
       <div className="course-node__header">
         <span className="course-node__code">{data.courseId}</span>
         <div className="course-node__badges">
