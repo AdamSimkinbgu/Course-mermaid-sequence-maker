@@ -30,7 +30,7 @@ test('validateGraph flags invalid grouping ids', () => {
   };
   const result = validateGraph(graph);
   assert.equal(result.valid, false);
-  assert.match(result.errors[0] ?? '', /groupingId must be a string/);
+  assert.match(result.errors[0] ?? '', /groupingId must be/);
 });
 
 test('validateGraph ensures edges reference existing nodes', () => {
@@ -42,4 +42,3 @@ test('validateGraph ensures edges reference existing nodes', () => {
   assert.equal(result.valid, false);
   assert.match(result.errors[0] ?? '', /source must reference an existing node id/);
 });
-

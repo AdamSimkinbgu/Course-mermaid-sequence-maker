@@ -34,8 +34,9 @@ MVP (Excel-first)
     - Code: packages/parser-excel/src/index.ts:1
   - [x] Diagnostics: unknown refs, cycle detection
     - Code: packages/parser-excel/src/index.ts:1
-  - [ ] Validate output graph with JSON Schema
+  - [x] Validate output graph with JSON Schema
     - Schema: schema/graph.schema.json:1
+    - Code: packages/core/src/index.ts:1
   - [x] Smoke test script using template CSV
     - Script: scripts/smoke.mjs:1
     - Template: resources/templates/courses-template.csv:1
