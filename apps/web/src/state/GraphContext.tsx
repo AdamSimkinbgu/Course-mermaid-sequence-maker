@@ -36,6 +36,9 @@ import { applyDagreLayout, type LayoutDirection } from '../utils/layout';
 const NODE_WIDTH = 220;
 const NODE_HEIGHT = 120;
 const NODE_GAP = 48;
+const AUTOSAVE_KEY = 'course-dag-editor/autosave';
+const AUTOSAVE_DEBOUNCE_MS = 750;
+type AutosaveState = 'idle' | 'saving' | 'saved';
 
 export type CourseStatus = 'completed' | 'in_progress' | 'planned' | 'failed' | 'unknown';
 
@@ -80,6 +83,7 @@ interface GraphContextValue {
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  autosaveState: AutosaveState;
 }
 
 const GraphContext = createContext<GraphContextValue | undefined>(undefined);
@@ -112,6 +116,8 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
   const isRestoringRef = useRef(false);
   const hasInitializedHistoryRef = useRef(false);
   const [historyStatus, setHistoryStatus] = useState({ canUndo: false, canRedo: false });
+  const autosaveTimerRef = useRef<number | null>(null);
+  const [autosaveState, setAutosaveState] = useState<AutosaveState>('saved');
 
   const updateHistoryStatus = useCallback(() => {
     const canUndo = historyIndexRef.current > 0;
@@ -407,6 +413,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       setSelectedNodeId(null);
       setSelectedEdgeId(null);
       lastSerializedRef.current = serializeSnapshot(snapshot);
+      setAutosaveState('saved');
       setTimeout(() => {
         isRestoringRef.current = false;
       }, 0);
@@ -431,6 +438,58 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
     restoreSnapshot(snapshot);
     updateHistoryStatus();
   }, [restoreSnapshot, updateHistoryStatus]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = window.localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return;
+    try {
+      const snapshot = JSON.parse(raw) as GraphSnapshot;
+      historyRef.current = [snapshot];
+      historyIndexRef.current = 0;
+      hasInitializedHistoryRef.current = true;
+      restoreSnapshot(snapshot);
+      updateHistoryStatus();
+    } catch (error) {
+      console.warn('Failed to load autosave snapshot', error);
+      window.localStorage.removeItem(AUTOSAVE_KEY);
+    }
+  }, [restoreSnapshot, updateHistoryStatus]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!hasInitializedHistoryRef.current) return;
+    if (isRestoringRef.current) return;
+
+    const snapshot = captureSnapshot(nodes, edges, expressions);
+    const serialized = serializeSnapshot(snapshot);
+
+    if (serialized === lastSerializedRef.current) return;
+
+    if (autosaveTimerRef.current !== null) {
+      window.clearTimeout(autosaveTimerRef.current);
+    }
+
+    setAutosaveState('saving');
+    autosaveTimerRef.current = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(AUTOSAVE_KEY, serialized);
+        setAutosaveState('saved');
+      } catch (error) {
+        console.warn('Autosave failed', error);
+        setAutosaveState('idle');
+      }
+      autosaveTimerRef.current = null;
+    }, AUTOSAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (autosaveTimerRef.current !== null) {
+        window.clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+        setAutosaveState('idle');
+      }
+    };
+  }, [nodes, edges, expressions]);
 
   useEffect(() => {
     setNodes((current) => {
@@ -521,6 +580,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       redo,
       canUndo: historyStatus.canUndo,
       canRedo: historyStatus.canRedo,
+      autosaveState,
     }),
     [
       nodes,
@@ -543,6 +603,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       undo,
       redo,
       historyStatus,
+      autosaveState,
     ],
   );
 
