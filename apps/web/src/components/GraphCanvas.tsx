@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -10,6 +10,9 @@ import {
   type Edge,
   type Node,
   type OnSelectionChangeParams,
+  type ReactFlowInstance,
+  type Viewport,
+  type OnMoveEnd,
 } from 'reactflow';
 
 import { useGraph } from '../state/GraphContext';
@@ -72,6 +75,30 @@ export function GraphCanvas(): JSX.Element {
 
   const backgroundColor = theme === 'dark' ? '#1f2735' : '#e2e8f0';
 
+  const hasFitViewRef = useRef(false);
+  const instanceRef = useRef<ReactFlowInstance | null>(null);
+  const viewportRef = useRef<Viewport>({ x: 0, y: 0, zoom: 1 });
+
+  const handleInit = useCallback((instance: ReactFlowInstance) => {
+    instanceRef.current = instance;
+    if (!hasFitViewRef.current) {
+      instance.fitView({ duration: 0 });
+      hasFitViewRef.current = true;
+    }
+    viewportRef.current = instance.getViewport();
+  }, []);
+
+  const handleMoveEnd = useCallback<OnMoveEnd>((_, viewport) => {
+    viewportRef.current = viewport;
+  }, []);
+
+  useEffect(() => {
+    if (!hasFitViewRef.current) return;
+    const instance = instanceRef.current;
+    if (!instance) return;
+    instance.setViewport(viewportRef.current, { duration: 0 });
+  }, [nodes, edges]);
+
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey)) return;
@@ -96,7 +123,6 @@ export function GraphCanvas(): JSX.Element {
 
   return (
     <ReactFlow
-      fitView
       className="graph-canvas"
       nodes={nodes}
       edges={edges}
@@ -111,6 +137,8 @@ export function GraphCanvas(): JSX.Element {
       onSelectionChange={handleSelectionChange}
       onNodeClick={handleNodeClick}
       onEdgeClick={handleEdgeClick}
+      onInit={handleInit}
+      onMoveEnd={handleMoveEnd}
     >
       <Panel position="top-left" className="graph-panel">
         <strong>Course Graph</strong>

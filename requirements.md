@@ -3,9 +3,9 @@
 This document tracks functional and non-functional requirements, their status, and links to code and docs for traceability.
 
 Status legend
-- [ ] Planned
+- - [ ] Planned
 - [~] In Progress
-- [x] Done
+- - [x] Done
 - [-] Deferred
 
 MVP (Excel-first)
@@ -51,7 +51,7 @@ MVP (Excel-first)
   - [x] Notes on nodes/edges
     - apps/web/src/components/Sidebar.tsx:1
     - apps/web/src/state/GraphContext.tsx:1
-  - [ ] Undo/redo and autosave
+  - [~] Undo/redo and autosave *(UI flickers on undo/redo; viewport reset needs follow-up)*
   - [ ] Group containers with collapse/expand
   - [x] Layout toolbar (LR/TD, ELK/Dagre)
     - apps/web/src/components/Toolbar.tsx:1
@@ -68,6 +68,14 @@ MVP (Excel-first)
     - apps/web/src/components/nodes/CourseNode.tsx:1
     - apps/web/src/styles/global.css:1
   - [ ] Mermaid code panel (editable, bidirectional)
+  - Follow-up work
+    - [ ] Eliminate canvas flicker when undo/redo restores history snapshots
+      - apps/web/src/components/GraphCanvas.tsx:1
+    - [ ] Add unit coverage for history/autosave hooks
+      - apps/web/src/state/useGraphHistory.ts:1
+      - apps/web/src/state/useGraphAutosave.ts:1
+    - [ ] Document refactored GraphContext architecture
+      - docs/architecture.md:1
 
 - Persistence, sharing, and auth
   - [ ] API skeleton (Vercel serverless)
