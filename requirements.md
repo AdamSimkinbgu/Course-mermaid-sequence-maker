@@ -87,7 +87,9 @@ MVP (Excel-first)
   - [ ] Auth: email/password + OAuth
   - [ ] RBAC: viewer, editor, owner
   - [ ] Shareable links (capabilities + expiry)
-  - [ ] Local JSON export/import
+  - [ ] Local JSON export/import  
+  - [ ] Local PDF export
+
 
 - Exporters
   - [ ] Mermaid generator (flowchart + subgraphs; edges connect nodes only)

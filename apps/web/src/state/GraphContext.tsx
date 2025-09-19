@@ -46,6 +46,7 @@ import {
   normalizeNodeUpdates,
   updateCourseNodeData,
 } from './nodeTransforms';
+import { generateMermaidFromGraph, parseMermaid, type MermaidApplyResult } from './mermaid';
 import type {
   AutosaveState,
   CourseNodeData,
@@ -58,6 +59,8 @@ import type {
 const AUTOSAVE_KEY = 'course-dag-editor/autosave';
 const AUTOSAVE_DEBOUNCE_MS = 750;
 const HISTORY_INPUT_DEBOUNCE_MS = 350;
+const DEFAULT_EDGE_STYLE = { strokeWidth: 3 } as const;
+const DEFAULT_EDGE_MARKER = { type: MarkerType.ArrowClosed, width: 20, height: 20 } as const;
 
 interface GraphContextValue {
   nodes: Node<CourseNodeData>[];
@@ -75,13 +78,19 @@ interface GraphContextValue {
   updateNode: (id: string, updates: Partial<CourseNodeData>, options?: UpdateOptions) => void;
   addNode: (node?: Partial<CourseNodeData>) => string;
   deleteNode: (id: string) => void;
+  deleteEdge: (id: string) => void;
   updateEdgeNote: (id: string, note: string, options?: UpdateOptions) => void;
+  updateEdgeGrouping: (id: string, groupingId: string) => void;
   applyLayout: (overrides?: Partial<LayoutSettings>) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
   autosaveState: AutosaveState;
+  mermaidCode: string;
+  applyMermaid: (code: string) => MermaidApplyResult;
+  resetGraph: () => void;
+  canStartCourse: (id: string) => boolean;
 }
 
 const GraphContext = createContext<GraphContextValue | undefined>(undefined);
@@ -91,14 +100,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
 
   const [layout, setLayout] = useState<LayoutSettings>({ engine: 'dagre', direction: 'LR' });
 
-  const initialExpressions = useMemo(
-    () =>
-      new Map<string, string>(
-        sampleGraph.prereqExpressions?.map(({ courseId, expression }) => [courseId, expression]) ??
-          [],
-      ),
-    [sampleGraph],
-  );
+  const initialExpressions = useMemo(() => createInitialExpressions(sampleGraph), [sampleGraph]);
 
   const [expressions, setExpressions] = useState<Map<string, string>>(initialExpressions);
 
@@ -139,6 +141,28 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
   const graphSnapshot = useMemo(
     () => captureGraphSnapshot(nodes, edges, expressions),
     [nodes, edges, expressions],
+  );
+
+  const mermaidCode = useMemo(
+    () => generateMermaidFromGraph(nodes, edges, layout.direction),
+    [nodes, edges, layout.direction],
+  );
+
+  const computeStatusMap = useCallback(() => {
+    const statusMap = new Map<string, CourseStatus>();
+    nodes.forEach((node) => {
+      const statusValue = node.data.disabled ? 'failed' : node.data.status;
+      statusMap.set(node.id, statusValue);
+    });
+    return statusMap;
+  }, [nodes]);
+
+  const canStartCourse = useCallback(
+    (courseId: string) => {
+      const statusMap = computeStatusMap();
+      return evaluateCourseEligibility(courseId, statusMap);
+    },
+    [computeStatusMap, evaluateCourseEligibility],
   );
 
   const nodeVisualSignature = useMemo(
@@ -246,7 +270,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
             spacingConfig,
           ),
         );
-        return updated;
+        return updated.map(applyDefaultEdgeVisuals);
       });
     },
     [flushTransient, layout.direction, spacingConfig],
@@ -258,7 +282,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       flushTransient();
       const ids = new Set(toDelete.map((node) => node.id));
       const filteredEdges = edges.filter((edge) => !ids.has(edge.source) && !ids.has(edge.target));
-      setEdges(filteredEdges);
+      setEdges(filteredEdges.map(applyDefaultEdgeVisuals));
       setNodes((current) =>
         enforceNodeSpacing(
           applyDagreLayout(
@@ -286,7 +310,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       flushTransient();
       const ids = new Set(toDelete.map((edge) => edge.id));
       const filtered = edges.filter((edge) => !ids.has(edge.id));
-      setEdges(filtered);
+      setEdges(filtered.map(applyDefaultEdgeVisuals));
       setNodes((current) =>
         enforceNodeSpacing(
           applyDagreLayout(current, filtered, { direction: layout.direction }),
@@ -324,6 +348,15 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         current.map((node) => {
           if (node.id !== id) return node;
           const normalized = normalizeNodeUpdates(updates);
+
+          if (
+            normalized.status &&
+            (normalized.status === 'in_progress' || normalized.status === 'completed') &&
+            !canStartCourse(id)
+          ) {
+            return node;
+          }
+
           const merged = updateCourseNodeData(node.data, normalized);
           return {
             ...node,
@@ -332,7 +365,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         }),
       );
     },
-    [flushTransient, scheduleTransientCommit],
+    [canStartCourse, flushTransient, scheduleTransientCommit],
   );
 
   const addNode = useCallback(
@@ -394,6 +427,16 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
     [flushTransient, nodes, onNodesDelete],
   );
 
+  const deleteEdge = useCallback(
+    (id: string) => {
+      flushTransient();
+      const target = edges.find((edge) => edge.id === id);
+      if (!target) return;
+      onEdgesDelete([target]);
+    },
+    [edges, flushTransient, onEdgesDelete],
+  );
+
   const updateEdgeNote = useCallback(
     (id: string, note: string, options?: UpdateOptions) => {
       if (options?.transient) {
@@ -405,23 +448,41 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       setEdges((current) =>
         current.map((edge) =>
           edge.id === id
-            ? {
+            ? applyDefaultEdgeVisuals({
                 ...edge,
                 data: {
                   ...edge.data,
                   note,
                 },
-                label: note
-                  ? note
-                  : edge.data?.groupingId
-                  ? `Group ${(edge.data.groupingId as string).split('::').pop()}`
-                  : undefined,
-              }
+                label: formatEdgeLabel(note, edge.data?.groupingId as string | undefined),
+              })
             : edge,
         ),
       );
     },
     [flushTransient, scheduleTransientCommit],
+  );
+
+  const updateEdgeGrouping = useCallback(
+    (id: string, groupingId: string) => {
+      flushTransient();
+      const value = groupingId.trim() || undefined;
+      setEdges((current) =>
+        current.map((edge) =>
+          edge.id === id
+            ? applyDefaultEdgeVisuals({
+                ...edge,
+                data: {
+                  ...edge.data,
+                  groupingId: value,
+                },
+                label: formatEdgeLabel(edge.data?.note as string | undefined, value),
+              })
+            : edge,
+        ),
+      );
+    },
+    [flushTransient],
   );
 
   const applyLayout = useCallback(
@@ -452,6 +513,134 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
   const redo = useCallback(() => {
     historyRedo(restoreSnapshot);
   }, [historyRedo, restoreSnapshot]);
+
+  const applyMermaid = useCallback(
+    (code: string): MermaidApplyResult => {
+      const result = parseMermaid(code);
+      if (!result.ok) {
+        return { ok: false, errors: result.errors };
+      }
+
+      const { graph } = result;
+
+      const existingNodeMap = new Map(nodes.map((node) => [node.id, node]));
+      const existingEdgeMap = new Map(
+        edges.map((edge) => [`${edge.source}->${edge.target}`, edge]),
+      );
+
+      const nextNodesBase: Node<CourseNodeData>[] = graph.nodes.map((parsed) => {
+        const courseId = parsed.id.trim();
+        const existing = existingNodeMap.get(courseId);
+        const baseData: CourseNodeData = existing
+          ? { ...existing.data }
+          : {
+              label: formatCourseLabel(courseId, courseId),
+              courseId,
+              title: courseId,
+              credits: 0,
+              department: undefined,
+              level: undefined,
+              term: undefined,
+              status: 'planned',
+              disabled: false,
+              grade: undefined,
+              notes: '',
+            };
+
+        if (parsed.label && parsed.label.trim()) {
+          const labelSource = parsed.label.replace(/\r/g, '');
+          const labelLines = labelSource.split(/\n+/);
+          const titleCandidate = labelLines.slice(1).join(' ').trim();
+          const nextTitle = titleCandidate || labelLines[0]?.trim() || courseId;
+          baseData.title = nextTitle;
+        }
+
+        baseData.label = formatCourseLabel(courseId, baseData.title);
+
+        return {
+          id: courseId,
+          position: { x: 0, y: 0 },
+          data: baseData,
+          type: existing?.type ?? 'course',
+          className: existing?.className ?? 'course-node course-node--available',
+          style: existing?.style ? { ...existing.style } : existing?.style,
+        };
+      });
+
+      const nextEdges: Edge[] = graph.edges.map((edge, index) => {
+        const key = `${edge.source}->${edge.target}`;
+        const existing = existingEdgeMap.get(key);
+        if (existing) {
+          return applyDefaultEdgeVisuals({
+            ...existing,
+            id: existing.id,
+            data: existing.data ? { ...existing.data } : {},
+            label: formatEdgeLabel(
+              existing.data?.note as string | undefined,
+              existing.data?.groupingId as string | undefined,
+            ),
+          });
+        }
+        return applyDefaultEdgeVisuals({
+          id: `mermaid-${edge.source}-${edge.target}-${index}`,
+          source: edge.source,
+          target: edge.target,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          data: {},
+          label: formatEdgeLabel(undefined, undefined),
+        });
+      });
+
+      const expressionsMap = new Map(expressions);
+      nextNodesBase.forEach((node) => {
+        if (!expressionsMap.has(node.id)) {
+          expressionsMap.set(node.id, 'NONE');
+        }
+      });
+      Array.from(expressionsMap.keys()).forEach((key) => {
+        if (!nextNodesBase.find((node) => node.id === key)) {
+          expressionsMap.delete(key);
+        }
+      });
+
+      flushTransient();
+
+      setLayout((current) => ({ ...current, direction: graph.direction }));
+      setExpressions(expressionsMap);
+      setEdges(nextEdges);
+      setNodes(
+        enforceNodeSpacing(
+          applyDagreLayout(nextNodesBase, nextEdges, { direction: graph.direction }),
+          new Set(),
+          spacingConfig,
+        ),
+      );
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+
+      return { ok: true };
+    },
+    [applyDagreLayout, edges, expressions, flushTransient, nodes, spacingConfig],
+  );
+
+  const resetGraph = useCallback(() => {
+    flushTransient();
+    const graph = loadSampleGraph();
+    const defaultLayout: LayoutSettings = { engine: 'dagre', direction: 'LR' };
+    const expressionsMap = createInitialExpressions(graph);
+    const nextEdges = createInitialEdges(graph);
+    const nextNodes = createInitialNodes(graph, defaultLayout.direction);
+
+    setLayout(defaultLayout);
+    setExpressions(expressionsMap);
+    setEdges(nextEdges);
+    setNodes(nextNodes);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+
+    const snapshot = captureGraphSnapshot(nextNodes, nextEdges, expressionsMap);
+    initializeHistory(snapshot);
+  }, [flushTransient, initializeHistory]);
 
   useEffect(() => {
     setNodes((current) => {
@@ -515,13 +704,19 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       updateNode,
       addNode,
       deleteNode,
+      deleteEdge,
       updateEdgeNote,
+      updateEdgeGrouping,
       applyLayout,
       undo,
       redo,
       canUndo,
       canRedo,
       autosaveState,
+      mermaidCode,
+      applyMermaid,
+      resetGraph,
+      canStartCourse,
     }),
     [
       nodes,
@@ -539,11 +734,19 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       updateNode,
       addNode,
       deleteNode,
+      deleteEdge,
       updateEdgeNote,
+      updateEdgeGrouping,
       applyLayout,
       undo,
       redo,
+      canUndo,
+      canRedo,
       autosaveState,
+      mermaidCode,
+      applyMermaid,
+      resetGraph,
+      canStartCourse,
     ],
   );
 
@@ -592,22 +795,52 @@ function createInitialNodes(graph: Graph, direction: LayoutDirection): Node<Cour
 }
 
 function createInitialEdges(graph: Graph): Edge[] {
-  return graph.edges.map((edge) => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    label: edge.groupingId ? `Group ${edge.groupingId.split('::').pop()}` : undefined,
-    markerEnd: { type: MarkerType.ArrowClosed },
-    data: {
-      groupingId: edge.groupingId,
-    },
-  }));
+  return graph.edges.map((edge) =>
+    applyDefaultEdgeVisuals({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      label: edge.groupingId ? `Group ${edge.groupingId.split('::').pop()}` : undefined,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      data: {
+        groupingId: edge.groupingId,
+      },
+    }),
+  );
+}
+
+function createInitialExpressions(graph: Graph): Map<string, string> {
+  return new Map<string, string>(
+    graph.prereqExpressions?.map(({ courseId, expression }) => [courseId, expression]) ?? [],
+  );
 }
 
 interface NodeVisualContext {
   eligibilityMap: Map<string, boolean>;
   selectedNodeId: string | null;
   prereqSet: Set<string>;
+}
+
+function applyDefaultEdgeVisuals(edge: Edge): Edge {
+  const markerEnd =
+    typeof edge.markerEnd === 'string' || edge.markerEnd === undefined
+      ? { ...DEFAULT_EDGE_MARKER }
+      : { ...DEFAULT_EDGE_MARKER, ...edge.markerEnd };
+  const style = edge.style ? { ...DEFAULT_EDGE_STYLE, ...edge.style } : { ...DEFAULT_EDGE_STYLE };
+  return {
+    ...edge,
+    markerEnd,
+    style,
+  };
+}
+
+function formatEdgeLabel(note?: string, groupingId?: string): string | undefined {
+  if (note && note.trim()) return note.trim();
+  if (groupingId && groupingId.trim()) {
+    const parts = groupingId.trim().split('::').pop();
+    return parts ? `Group ${parts}` : groupingId.trim();
+  }
+  return undefined;
 }
 
 function buildClassName(

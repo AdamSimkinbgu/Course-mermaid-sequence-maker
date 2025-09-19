@@ -1,0 +1,120 @@
+.mermaid-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border-muted);
+  min-width: 360px;
+  max-width: 460px;
+  padding: 1rem;
+  gap: 0.75rem;
+  color: var(--color-text-primary);
+  height: 100%;
+  min-height: 0;
+}
+
+.mermaid-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mermaid-panel__header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.mermaid-panel__header p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.mermaid-panel__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mermaid-panel__button {
+  border: 1px solid var(--border-muted);
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.mermaid-panel__button:hover:not(:disabled) {
+  background: var(--panel-hover-bg);
+}
+
+.mermaid-panel__button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mermaid-panel__button--primary {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border-color: var(--btn-primary-border);
+}
+
+.mermaid-panel__button--primary:hover:not(:disabled) {
+  background: var(--btn-primary-hover-bg);
+}
+
+.mermaid-panel__editor {
+  flex: 1;
+  min-height: 240px;
+  font-family: var(--font-mono, 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  color: inherit;
+  padding: 0.75rem;
+  resize: none;
+  min-width: 0;
+}
+
+.mermaid-panel__editor:focus {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.mermaid-panel__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.mermaid-panel__status {
+  opacity: 0.7;
+}
+
+.mermaid-panel__status--success {
+  color: var(--color-success);
+}
+
+.mermaid-panel__errors {
+  color: var(--color-danger);
+}
+
+.mermaid-panel__errors ul {
+  padding-left: 1.25rem;
+  margin: 0.25rem 0 0;
+}
+
+.mermaid-panel__errors li {
+  margin-bottom: 0.15rem;
+}
+
+@media (max-width: 960px) {
+  .mermaid-panel {
+    display: none;
+  }
+}

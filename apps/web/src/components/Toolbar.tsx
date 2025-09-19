@@ -5,11 +5,13 @@ import './Toolbar.css';
 
 interface ToolbarProps {
   sidebarOpen: boolean;
+  mermaidOpen: boolean;
   onToggleSidebar(): void;
+  onToggleMermaid(): void;
 }
 
-export function Toolbar({ sidebarOpen, onToggleSidebar }: ToolbarProps): JSX.Element {
-  const { addNode, applyLayout, layout, undo, redo, canUndo, canRedo, autosaveState } = useGraph();
+export function Toolbar({ sidebarOpen, mermaidOpen, onToggleSidebar, onToggleMermaid }: ToolbarProps): JSX.Element {
+  const { addNode, applyLayout, layout, undo, redo, canUndo, canRedo, autosaveState, resetGraph } = useGraph();
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -57,6 +59,14 @@ export function Toolbar({ sidebarOpen, onToggleSidebar }: ToolbarProps): JSX.Ele
         >
           Add course
         </button>
+        <button
+          type="button"
+          onClick={resetGraph}
+          className="toolbar__button toolbar__button--ghost"
+          title="Reset to default sample graph"
+        >
+          Reset sample
+        </button>
         <div className="toolbar__history">
           <button
             type="button"
@@ -82,6 +92,9 @@ export function Toolbar({ sidebarOpen, onToggleSidebar }: ToolbarProps): JSX.Ele
         </button>
         <button type="button" onClick={onToggleSidebar} className="toolbar__button">
           {sidebarOpen ? 'Hide details' : 'Show details'}
+        </button>
+        <button type="button" onClick={onToggleMermaid} className="toolbar__button">
+          {mermaidOpen ? 'Hide Mermaid' : 'Show Mermaid'}
         </button>
         <span className="toolbar__autosave" aria-live="polite">
           {autosaveState === 'saving' ? 'Saving…' : 'Saved'}

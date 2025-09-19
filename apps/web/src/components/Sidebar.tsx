@@ -54,8 +54,11 @@ export function Sidebar(): JSX.Element {
     selectedEdgeId,
     updateNode,
     deleteNode,
+    deleteEdge,
+    canStartCourse,
     addNode,
     updateEdgeNote,
+    updateEdgeGrouping,
     applyLayout,
   } = useGraph();
 
@@ -96,6 +99,14 @@ export function Sidebar(): JSX.Element {
     (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       const value = event.target.value;
       const nextValue = transform ? transform(value) : (value as SidebarFormState[K]);
+      if (
+        field === 'status' &&
+        selectedNode &&
+        (nextValue === 'in_progress' || nextValue === 'completed') &&
+        !canStartCourse(selectedNode.id)
+      ) {
+        return;
+      }
       setForm((current) => ({ ...current, [field]: nextValue }));
       if (selectedNode) {
         const transient = TRANSIENT_FIELDS.has(field);
@@ -128,8 +139,11 @@ export function Sidebar(): JSX.Element {
   };
 
   const handleDelete = () => {
-    if (!selectedNode) return;
-    deleteNode(selectedNode.id);
+    if (selectedNode) {
+      deleteNode(selectedNode.id);
+    } else if (selectedEdge) {
+      deleteEdge(selectedEdge.id);
+    }
   };
 
   return (
@@ -142,7 +156,7 @@ export function Sidebar(): JSX.Element {
           type="button"
           onClick={handleDelete}
           className="sidebar__button sidebar__button--danger"
-          disabled={!selectedNode}
+          disabled={!selectedNode && !selectedEdge}
         >
           🗑 Remove selected
         </button>
@@ -263,7 +277,13 @@ export function Sidebar(): JSX.Element {
           </div>
         </form>
       ) : selectedEdge ? (
-        <EdgeInspector edgeId={selectedEdge.id} note={String(selectedEdge.data?.note ?? '')} onChange={updateEdgeNote} />
+        <EdgeInspector
+          edgeId={selectedEdge.id}
+          note={String(selectedEdge.data?.note ?? '')}
+          groupingId={String(selectedEdge.data?.groupingId ?? '')}
+          onNoteChange={updateEdgeNote}
+          onGroupingChange={updateEdgeGrouping}
+        />
       ) : (
         <div className="sidebar__empty">
           <h2>Select a course</h2>
@@ -285,10 +305,12 @@ export function Sidebar(): JSX.Element {
 interface EdgeInspectorProps {
   edgeId: string;
   note: string;
-  onChange: (id: string, note: string, options?: { transient?: boolean }) => void;
+  groupingId: string;
+  onNoteChange: (id: string, note: string, options?: { transient?: boolean }) => void;
+  onGroupingChange: (id: string, groupingId: string) => void;
 }
 
-function EdgeInspector({ edgeId, note, onChange }: EdgeInspectorProps): JSX.Element {
+function EdgeInspector({ edgeId, note, groupingId, onNoteChange, onGroupingChange }: EdgeInspectorProps): JSX.Element {
   return (
     <form className="sidebar__form" onSubmit={(event) => event.preventDefault()}>
       <h2 className="sidebar__heading">Edge notes</h2>
@@ -297,12 +319,21 @@ function EdgeInspector({ edgeId, note, onChange }: EdgeInspectorProps): JSX.Elem
         <input id="edge-id" value={edgeId} disabled />
       </div>
       <div className="sidebar__field">
+        <label htmlFor="edge-group">Grouping ID</label>
+        <input
+          id="edge-group"
+          value={groupingId}
+          onChange={(event) => onGroupingChange(edgeId, event.target.value)}
+          placeholder="e.g. g1 or term::g1"
+        />
+      </div>
+      <div className="sidebar__field">
         <label htmlFor="edge-note">Notes</label>
         <textarea
           id="edge-note"
           rows={4}
           value={note}
-          onChange={(event) => onChange(edgeId, event.target.value, { transient: true })}
+          onChange={(event) => onNoteChange(edgeId, event.target.value, { transient: true })}
           placeholder="Describe the prerequisite relationship"
         />
       </div>
