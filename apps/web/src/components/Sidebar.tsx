@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { useGraph, type CourseStatus } from '../state/GraphContext';
+import { useGraph, type CourseNodeData, type CourseStatus } from '../state/GraphContext';
 
 import './Sidebar.css';
 
@@ -35,6 +35,16 @@ const EMPTY_FORM: SidebarFormState = {
   grade: '',
   notes: '',
 };
+
+const TRANSIENT_FIELDS = new Set<keyof SidebarFormState>([
+  'title',
+  'credits',
+  'department',
+  'level',
+  'term',
+  'grade',
+  'notes',
+]);
 
 export function Sidebar(): JSX.Element {
   const {
@@ -88,16 +98,18 @@ export function Sidebar(): JSX.Element {
       const nextValue = transform ? transform(value) : (value as SidebarFormState[K]);
       setForm((current) => ({ ...current, [field]: nextValue }));
       if (selectedNode) {
+        const transient = TRANSIENT_FIELDS.has(field);
         if (field === 'credits') {
-          updateNode(selectedNode.id, { credits: Number(nextValue) });
+          updateNode(selectedNode.id, { credits: Number(nextValue) }, { transient });
         } else if (field === 'status') {
           updateNode(selectedNode.id, { status: nextValue as CourseStatus });
         } else if (field === 'grade') {
-          updateNode(selectedNode.id, { grade: nextValue as string });
+          updateNode(selectedNode.id, { grade: nextValue as string }, { transient });
         } else if (field === 'notes') {
-          updateNode(selectedNode.id, { notes: nextValue as string });
+          updateNode(selectedNode.id, { notes: nextValue as string }, { transient });
         } else {
-          updateNode(selectedNode.id, { [field]: nextValue });
+          const payload = { [field]: nextValue } as Partial<CourseNodeData>;
+          updateNode(selectedNode.id, payload, { transient });
         }
       }
     };
@@ -273,7 +285,7 @@ export function Sidebar(): JSX.Element {
 interface EdgeInspectorProps {
   edgeId: string;
   note: string;
-  onChange: (id: string, note: string) => void;
+  onChange: (id: string, note: string, options?: { transient?: boolean }) => void;
 }
 
 function EdgeInspector({ edgeId, note, onChange }: EdgeInspectorProps): JSX.Element {
@@ -290,7 +302,7 @@ function EdgeInspector({ edgeId, note, onChange }: EdgeInspectorProps): JSX.Elem
           id="edge-note"
           rows={4}
           value={note}
-          onChange={(event) => onChange(edgeId, event.target.value)}
+          onChange={(event) => onChange(edgeId, event.target.value, { transient: true })}
           placeholder="Describe the prerequisite relationship"
         />
       </div>

@@ -17,9 +17,11 @@ import type {
 } from 'reactflow';
 import {
   MarkerType,
+  Position,
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
+  internalsSymbol,
 } from 'reactflow';
 
 import type { Graph } from '@course-dag/core';
@@ -38,6 +40,7 @@ const NODE_HEIGHT = 120;
 const NODE_GAP = 48;
 const AUTOSAVE_KEY = 'course-dag-editor/autosave';
 const AUTOSAVE_DEBOUNCE_MS = 750;
+const TRANSIENT_HISTORY_DEBOUNCE_MS = 350;
 type AutosaveState = 'idle' | 'saving' | 'saved';
 
 export type CourseStatus = 'completed' | 'in_progress' | 'planned' | 'failed' | 'unknown';
@@ -61,6 +64,10 @@ export interface LayoutSettings {
   direction: LayoutDirection;
 }
 
+interface UpdateOptions {
+  transient?: boolean;
+}
+
 interface GraphContextValue {
   nodes: Node<CourseNodeData>[];
   edges: Edge[];
@@ -74,10 +81,10 @@ interface GraphContextValue {
   onEdgesDelete: (edges: Edge[]) => void;
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
-  updateNode: (id: string, updates: Partial<CourseNodeData>) => void;
+  updateNode: (id: string, updates: Partial<CourseNodeData>, options?: UpdateOptions) => void;
   addNode: (node?: Partial<CourseNodeData>) => string;
   deleteNode: (id: string) => void;
-  updateEdgeNote: (id: string, note: string) => void;
+  updateEdgeNote: (id: string, note: string, options?: UpdateOptions) => void;
   applyLayout: (overrides?: Partial<LayoutSettings>) => void;
   undo: () => void;
   redo: () => void;
@@ -114,10 +121,21 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
   const historyIndexRef = useRef(-1);
   const lastSerializedRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
+  const isApplyingTransientChangeRef = useRef(false);
+  const historyGuardModeRef = useRef<'idle' | 'drag' | 'input'>('idle');
   const hasInitializedHistoryRef = useRef(false);
   const [historyStatus, setHistoryStatus] = useState({ canUndo: false, canRedo: false });
   const autosaveTimerRef = useRef<number | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>('saved');
+  const latestStateRef = useRef<
+    | {
+        nodes: Node<CourseNodeData>[];
+        edges: Edge[];
+        expressions: Map<string, string>;
+      }
+    | null
+  >(null);
+  const transientHistoryTimerRef = useRef<number | null>(null);
 
   const updateHistoryStatus = useCallback(() => {
     const canUndo = historyIndexRef.current > 0;
@@ -125,6 +143,80 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       historyIndexRef.current >= 0 && historyIndexRef.current < historyRef.current.length - 1;
     setHistoryStatus({ canUndo, canRedo });
   }, []);
+
+  const recordSnapshot = useCallback(
+    (nodesArg: Node<CourseNodeData>[], edgesArg: Edge[], expressionsArg: Map<string, string>) => {
+      const snapshot = captureSnapshot(nodesArg, edgesArg, expressionsArg);
+      const serialized = serializeSnapshot(snapshot);
+
+      if (!hasInitializedHistoryRef.current) {
+        historyRef.current = [snapshot];
+        historyIndexRef.current = 0;
+        lastSerializedRef.current = serialized;
+        hasInitializedHistoryRef.current = true;
+        updateHistoryStatus();
+        return;
+      }
+
+      if (serialized === lastSerializedRef.current) return;
+
+      historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+      historyRef.current.push(snapshot);
+      historyIndexRef.current = historyRef.current.length - 1;
+      lastSerializedRef.current = serialized;
+      updateHistoryStatus();
+    },
+    [updateHistoryStatus],
+  );
+
+  const cancelTransientHistory = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (transientHistoryTimerRef.current !== null) {
+      window.clearTimeout(transientHistoryTimerRef.current);
+      transientHistoryTimerRef.current = null;
+    }
+  }, []);
+
+  const flushTransientHistoryNow = useCallback(() => {
+    if (historyGuardModeRef.current !== 'input') {
+      cancelTransientHistory();
+      return;
+    }
+
+    cancelTransientHistory();
+    if (!isApplyingTransientChangeRef.current) {
+      historyGuardModeRef.current = 'idle';
+      return;
+    }
+
+    isApplyingTransientChangeRef.current = false;
+    historyGuardModeRef.current = 'idle';
+    const latest = latestStateRef.current;
+    if (!latest) return;
+    recordSnapshot(latest.nodes, latest.edges, latest.expressions);
+  }, [cancelTransientHistory, recordSnapshot]);
+
+  const scheduleTransientHistory = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    cancelTransientHistory();
+    isApplyingTransientChangeRef.current = true;
+    historyGuardModeRef.current = 'input';
+    transientHistoryTimerRef.current = window.setTimeout(() => {
+      transientHistoryTimerRef.current = null;
+      if (historyGuardModeRef.current !== 'input') {
+        return;
+      }
+      if (!isApplyingTransientChangeRef.current) {
+        historyGuardModeRef.current = 'idle';
+        return;
+      }
+      isApplyingTransientChangeRef.current = false;
+      historyGuardModeRef.current = 'idle';
+      const latest = latestStateRef.current;
+      if (!latest) return;
+      recordSnapshot(latest.nodes, latest.edges, latest.expressions);
+    }, TRANSIENT_HISTORY_DEBOUNCE_MS);
+  }, [cancelTransientHistory, recordSnapshot]);
 
   const nodeVisualSignature = useMemo(
     () =>
@@ -138,27 +230,21 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
   );
 
   useEffect(() => {
-    const snapshot = captureSnapshot(nodes, edges, expressions);
-    const serialized = serializeSnapshot(snapshot);
+    return () => {
+      cancelTransientHistory();
+      isApplyingTransientChangeRef.current = false;
+      historyGuardModeRef.current = 'idle';
+    };
+  }, [cancelTransientHistory]);
 
-    if (!hasInitializedHistoryRef.current) {
-      historyRef.current = [snapshot];
-      historyIndexRef.current = 0;
-      lastSerializedRef.current = serialized;
-      hasInitializedHistoryRef.current = true;
-      updateHistoryStatus();
-      return;
-    }
+  useEffect(() => {
+    latestStateRef.current = { nodes, edges, expressions };
 
     if (isRestoringRef.current) return;
-    if (serialized === lastSerializedRef.current) return;
+    if (isApplyingTransientChangeRef.current) return;
 
-    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
-    historyRef.current.push(snapshot);
-    historyIndexRef.current = historyRef.current.length - 1;
-    lastSerializedRef.current = serialized;
-    updateHistoryStatus();
-  }, [nodes, edges, expressions, updateHistoryStatus]);
+    recordSnapshot(nodes, edges, expressions);
+  }, [nodes, edges, expressions, recordSnapshot]);
 
   const getExpression = useCallback(
     (courseId: string) => expressions.get(courseId) ?? 'NONE',
@@ -198,10 +284,32 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
           changedIds.add(change.id);
         }
       });
+
+      const hasPositionChange = changes.some((change) => change.type === 'position');
+      const hasDraggingUpdate = changes.some(
+        (change) => change.type === 'position' && change.dragging === true,
+      );
+      const hasDragEnd = changes.some(
+        (change) => change.type === 'position' && change.dragging === false,
+      );
+
+      if (hasDraggingUpdate) {
+        isApplyingTransientChangeRef.current = true;
+        historyGuardModeRef.current = 'drag';
+      }
+
       setNodes((current) => {
         const next = applyNodeChanges(changes, current);
         return enforceNodeSpacing(next, changedIds);
       });
+
+      if (
+        hasDragEnd ||
+        (!hasDraggingUpdate && hasPositionChange && isApplyingTransientChangeRef.current)
+      ) {
+        isApplyingTransientChangeRef.current = false;
+        historyGuardModeRef.current = 'idle';
+      }
     },
     [],
   );
@@ -215,6 +323,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      flushTransientHistoryNow();
       setEdges((current) => {
         const updated = addEdge(
           {
@@ -233,12 +342,13 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       return updated;
     });
   },
-  [layout.direction],
+  [flushTransientHistoryNow, layout.direction],
   );
 
   const onNodesDelete = useCallback(
     (toDelete: Node[]) => {
       if (toDelete.length === 0) return;
+      flushTransientHistoryNow();
       const ids = new Set(toDelete.map((node) => node.id));
       const filteredEdges = edges.filter(
         (edge) => !ids.has(edge.source) && !ids.has(edge.target),
@@ -261,12 +371,13 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         return next;
       });
     },
-    [edges, layout.direction],
+    [edges, flushTransientHistoryNow, layout.direction],
   );
 
   const onEdgesDelete = useCallback(
     (toDelete: Edge[]) => {
       if (toDelete.length === 0) return;
+      flushTransientHistoryNow();
       const ids = new Set(toDelete.map((edge) => edge.id));
       const filtered = edges.filter((edge) => !ids.has(edge.id));
       setEdges(filtered);
@@ -277,7 +388,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         ),
       );
     },
-    [edges, layout.direction],
+    [edges, flushTransientHistoryNow, layout.direction],
   );
 
   const selectNode = useCallback((id: string | null) => {
@@ -294,44 +405,54 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
     }
   }, []);
 
-  const updateNode = useCallback((id: string, updates: Partial<CourseNodeData>) => {
-    setNodes((current) =>
-      current.map((node) => {
-        if (node.id !== id) return node;
-        const normalized = normalizeNodeUpdates(updates);
-        const merged: CourseNodeData = {
-          ...node.data,
-          ...normalized,
-        };
+  const updateNode = useCallback(
+    (id: string, updates: Partial<CourseNodeData>, options?: UpdateOptions) => {
+      if (options?.transient) {
+        scheduleTransientHistory();
+      } else {
+        flushTransientHistoryNow();
+      }
 
-        if (normalized.grade !== undefined) {
-          const gradeStatus = deriveStatusFromGrade(merged.grade);
-          if (gradeStatus && !merged.disabled) {
-            merged.status = gradeStatus;
-          } else if (!gradeStatus && !merged.disabled && merged.status === 'failed') {
-            merged.status = 'planned';
+      setNodes((current) =>
+        current.map((node) => {
+          if (node.id !== id) return node;
+          const normalized = normalizeNodeUpdates(updates);
+          const merged: CourseNodeData = {
+            ...node.data,
+            ...normalized,
+          };
+
+          if (normalized.grade !== undefined) {
+            const gradeStatus = deriveStatusFromGrade(merged.grade);
+            if (gradeStatus && !merged.disabled) {
+              merged.status = gradeStatus;
+            } else if (!gradeStatus && !merged.disabled && merged.status === 'failed') {
+              merged.status = 'planned';
+            }
           }
-        }
 
-        if (normalized.disabled !== undefined) {
-          if (!merged.disabled) {
-            if (merged.grade) {
-              const gradeStatus = deriveStatusFromGrade(merged.grade);
-              if (gradeStatus) {
-                merged.status = gradeStatus;
+          if (normalized.disabled !== undefined) {
+            if (!merged.disabled) {
+              if (merged.grade) {
+                const gradeStatus = deriveStatusFromGrade(merged.grade);
+                if (gradeStatus) {
+                  merged.status = gradeStatus;
+                }
               }
             }
           }
-        }
 
-        merged.label = formatLabel(merged.courseId, merged.title);
-        return { ...node, data: merged };
-      }),
-    );
-  }, []);
+          merged.label = formatLabel(merged.courseId, merged.title);
+          return { ...node, data: merged };
+        }),
+      );
+    },
+    [flushTransientHistoryNow, scheduleTransientHistory],
+  );
 
   const addNode = useCallback(
     (node?: Partial<CourseNodeData>) => {
+      flushTransientHistoryNow();
       const id = node?.courseId ?? `course-${Date.now()}`;
       const title = node?.title ?? 'New Course';
       const baseData: CourseNodeData = {
@@ -348,19 +469,22 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         notes: node?.notes ?? '',
       };
       baseData.label = formatLabel(baseData.courseId, baseData.title);
-      const newNode: Node<CourseNodeData> = {
-        id,
-        position: { x: 0, y: 0 },
-        data: baseData,
-        type: 'course',
-        className: 'course-node course-node--available',
-      };
-      setNodes((current) =>
-        enforceNodeSpacing(
-          applyDagreLayout([...current, newNode], edges, { direction: layout.direction }),
-          new Set([id]),
-        ),
-      );
+      const isHorizontal = layout.direction === 'LR';
+
+      setNodes((current) => {
+        const position = getNewNodePosition(current, layout.direction);
+        const positionedNode: Node<CourseNodeData> = {
+          id,
+          position,
+          data: baseData,
+          type: 'course',
+          className: 'course-node course-node--available',
+          targetPosition: isHorizontal ? Position.Left : Position.Top,
+          sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
+        };
+
+        return enforceNodeSpacing([...current, positionedNode], new Set([id]));
+      });
       setSelectedNodeId(id);
       setExpressions((currentExpressions) => {
         const next = new Map(currentExpressions);
@@ -371,41 +495,54 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
       });
       return id;
     },
-    [edges, layout.direction],
+    [flushTransientHistoryNow, layout.direction],
   );
 
   const deleteNode = useCallback(
     (id: string) => {
+      flushTransientHistoryNow();
       const target = nodes.find((node) => node.id === id);
       if (!target) return;
       onNodesDelete([target]);
     },
-    [nodes, onNodesDelete],
+    [flushTransientHistoryNow, nodes, onNodesDelete],
   );
 
-  const updateEdgeNote = useCallback((id: string, note: string) => {
-    setEdges((current) =>
-      current.map((edge) =>
-        edge.id === id
-          ? {
-              ...edge,
-              data: {
-                ...edge.data,
-                note,
-              },
-              label: note
-                ? note
-                : edge.data?.groupingId
-                ? `Group ${(edge.data.groupingId as string).split('::').pop()}`
-                : undefined,
-            }
-          : edge,
-      ),
-    );
-  }, []);
+  const updateEdgeNote = useCallback(
+    (id: string, note: string, options?: UpdateOptions) => {
+      if (options?.transient) {
+        scheduleTransientHistory();
+      } else {
+        flushTransientHistoryNow();
+      }
+
+      setEdges((current) =>
+        current.map((edge) =>
+          edge.id === id
+            ? {
+                ...edge,
+                data: {
+                  ...edge.data,
+                  note,
+                },
+                label: note
+                  ? note
+                  : edge.data?.groupingId
+                  ? `Group ${(edge.data.groupingId as string).split('::').pop()}`
+                  : undefined,
+              }
+            : edge,
+        ),
+      );
+    },
+    [flushTransientHistoryNow, scheduleTransientHistory],
+  );
 
   const restoreSnapshot = useCallback(
     (snapshot: GraphSnapshot) => {
+      cancelTransientHistory();
+      isApplyingTransientChangeRef.current = false;
+      historyGuardModeRef.current = 'idle';
       isRestoringRef.current = true;
       setExpressions(new Map(snapshot.expressions));
       setEdges(snapshot.edges.map((edge) => cloneEdge(edge)));
@@ -418,26 +555,28 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         isRestoringRef.current = false;
       }, 0);
     },
-    [],
+    [cancelTransientHistory],
   );
 
   const undo = useCallback(() => {
+    flushTransientHistoryNow();
     if (historyIndexRef.current <= 0) return;
     const nextIndex = historyIndexRef.current - 1;
     const snapshot = historyRef.current[nextIndex];
     historyIndexRef.current = nextIndex;
     restoreSnapshot(snapshot);
     updateHistoryStatus();
-  }, [restoreSnapshot, updateHistoryStatus]);
+  }, [flushTransientHistoryNow, restoreSnapshot, updateHistoryStatus]);
 
   const redo = useCallback(() => {
+    flushTransientHistoryNow();
     if (historyIndexRef.current >= historyRef.current.length - 1) return;
     const nextIndex = historyIndexRef.current + 1;
     const snapshot = historyRef.current[nextIndex];
     historyIndexRef.current = nextIndex;
     restoreSnapshot(snapshot);
     updateHistoryStatus();
-  }, [restoreSnapshot, updateHistoryStatus]);
+  }, [flushTransientHistoryNow, restoreSnapshot, updateHistoryStatus]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -545,6 +684,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
 
   const applyLayout = useCallback(
     (overrides?: Partial<LayoutSettings>) => {
+      flushTransientHistoryNow();
       setLayout((current) => {
         const next: LayoutSettings = { ...current, ...overrides };
         if (next.engine !== 'dagre') {
@@ -554,7 +694,7 @@ export function GraphProvider({ children }: { children: ReactNode }): JSX.Elemen
         return next;
       });
     },
-    [edges],
+    [edges, flushTransientHistoryNow],
   );
 
   const value = useMemo<GraphContextValue>(
@@ -784,10 +924,56 @@ function captureSnapshot(
   expressions: Map<string, string>,
 ): GraphSnapshot {
   return {
-    nodes: nodes.map((node) => cloneNode(node)),
-    edges: edges.map((edge) => cloneEdge(edge)),
+    nodes: nodes.map((node) => cloneNodeForSnapshot(node)),
+    edges: edges.map((edge) => cloneEdgeForSnapshot(edge)),
     expressions: Array.from(expressions.entries()),
   };
+}
+
+function cloneNodeForSnapshot(node: Node<CourseNodeData>): Node<CourseNodeData> {
+  const snapshot: Node<CourseNodeData> = {
+    ...node,
+    position: { ...node.position },
+    data: { ...node.data },
+    style: node.style ? { ...node.style } : undefined,
+    positionAbsolute: node.positionAbsolute ? { ...node.positionAbsolute } : undefined,
+  };
+
+  snapshot.className = undefined;
+  snapshot.selected = undefined;
+  snapshot.dragging = undefined;
+  snapshot.width = undefined;
+  snapshot.height = undefined;
+  snapshot.positionAbsolute = undefined;
+  (snapshot as any)[internalsSymbol] = undefined;
+
+  return snapshot;
+}
+
+function cloneEdgeForSnapshot(edge: Edge): Edge {
+  const snapshot: Edge = {
+    ...edge,
+    data: edge.data ? { ...edge.data } : undefined,
+    style: edge.style ? { ...edge.style } : undefined,
+    markerStart:
+      typeof edge.markerStart === 'string'
+        ? edge.markerStart
+        : edge.markerStart
+        ? { ...edge.markerStart }
+        : undefined,
+    markerEnd:
+      typeof edge.markerEnd === 'string'
+        ? edge.markerEnd
+        : edge.markerEnd
+        ? { ...edge.markerEnd }
+        : undefined,
+  };
+
+  snapshot.selected = undefined;
+  snapshot.sourceNode = undefined;
+  snapshot.targetNode = undefined;
+
+  return snapshot;
 }
 
 function serializeSnapshot(snapshot: GraphSnapshot): string {
@@ -795,12 +981,19 @@ function serializeSnapshot(snapshot: GraphSnapshot): string {
 }
 
 function cloneNode(node: Node<CourseNodeData>): Node<CourseNodeData> {
-  return {
+  const result: Node<CourseNodeData> = {
     ...node,
     position: { ...node.position },
     data: { ...node.data },
+    positionAbsolute: node.positionAbsolute ? { ...node.positionAbsolute } : undefined,
     style: node.style ? { ...node.style } : undefined,
   };
+
+  result.width = node.width ?? undefined;
+  result.height = node.height ?? undefined;
+  (result as any)[internalsSymbol] = undefined;
+
+  return result;
 }
 
 function cloneEdge(edge: Edge): Edge {
@@ -808,7 +1001,69 @@ function cloneEdge(edge: Edge): Edge {
     ...edge,
     data: edge.data ? { ...edge.data } : undefined,
     style: edge.style ? { ...edge.style } : undefined,
+    markerStart:
+      typeof edge.markerStart === 'string'
+        ? edge.markerStart
+        : edge.markerStart
+        ? { ...edge.markerStart }
+        : undefined,
+    markerEnd:
+      typeof edge.markerEnd === 'string'
+        ? edge.markerEnd
+        : edge.markerEnd
+        ? { ...edge.markerEnd }
+        : undefined,
   };
+}
+
+interface GraphBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+function calculateGraphBounds(nodes: Node<CourseNodeData>[]): GraphBounds | null {
+  if (nodes.length === 0) return null;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  nodes.forEach((node) => {
+    const { width, height } = getNodeDimensions(node);
+    const nodeMinX = node.position.x;
+    const nodeMinY = node.position.y;
+    const nodeMaxX = node.position.x + width;
+    const nodeMaxY = node.position.y + height;
+
+    if (nodeMinX < minX) minX = nodeMinX;
+    if (nodeMinY < minY) minY = nodeMinY;
+    if (nodeMaxX > maxX) maxX = nodeMaxX;
+    if (nodeMaxY > maxY) maxY = nodeMaxY;
+  });
+
+  return { minX, minY, maxX, maxY };
+}
+
+function getNewNodePosition(
+  existing: Node<CourseNodeData>[],
+  direction: LayoutDirection,
+): { x: number; y: number } {
+  const bounds = calculateGraphBounds(existing);
+  if (!bounds) {
+    return { x: 0, y: 0 };
+  }
+
+  const horizontalOffset = NODE_WIDTH + NODE_GAP * 2;
+  const verticalOffset = NODE_HEIGHT + NODE_GAP * 2;
+
+  if (direction === 'LR') {
+    return { x: bounds.maxX + horizontalOffset, y: bounds.minY };
+  }
+
+  return { x: bounds.minX, y: bounds.maxY + verticalOffset };
 }
 
 function enforceNodeSpacing(
